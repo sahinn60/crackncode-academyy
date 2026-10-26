@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: crackncode-academy
+    runtime: docker
+    plan: starter
+    numInstances: 1
+    healthCheckPath: /
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@crackncode.academy
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DATABASE_PATH
+        value: /data/crackncode.db
+    disk:
+      name: crackncode-data
+      mountPath: /data
+      sizeGB: 1

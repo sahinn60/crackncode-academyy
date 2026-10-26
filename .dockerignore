@@ -1,0 +1,11 @@
+node_modules
+.next
+data
+.env
+.env.local
+e2e-shots
+design-shots
+vibe_images
+ref.html
+.git
+*.log

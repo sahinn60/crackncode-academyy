@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.env
+.env.local
+data/*.db
+data/*.db-*
+next-env.d.ts
+*.tsbuildinfo
+e2e-shots
+design-shots
