@@ -35,8 +35,8 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
   const level = sp.level || "";
   const sort = sp.sort || "popular";
 
-  const courses = listCourses({ q, category, level, sort });
-  const categories = listCategories();
+  const courses = await listCourses({ q, category, level, sort });
+  const categories = await listCategories();
   const current: Record<string, string> = { q, category, level, sort };
 
   return (

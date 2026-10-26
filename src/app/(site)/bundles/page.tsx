@@ -8,11 +8,13 @@ export const metadata: Metadata = {
   description: "একাধিক কোর্স একসাথে — বান্ডেলে বেশি সেভ করুন।",
 };
 
-export default function BundlesPage() {
-  const bundles = listBundles().map((b) => ({
-    bundle: b,
-    courses: getBundleCourses(b),
-  }));
+export default async function BundlesPage() {
+  const bundles = await Promise.all(
+    (await listBundles()).map(async (b) => ({
+      bundle: b,
+      courses: await getBundleCourses(b),
+    }))
+  );
 
   return (
     <>

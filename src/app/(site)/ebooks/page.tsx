@@ -10,9 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default async function EbooksPage() {
-  const ebooks = listEbooks();
+  const ebooks = await listEbooks();
   const user = await getCurrentUser();
-  const purchased = user ? listMyPurchases(user.id, "ebook") : [];
+  const purchased = user ? await listMyPurchases(user.id, "ebook") : [];
   const purchasedIds = new Set(purchased.map((o) => o.product_id));
 
   return (

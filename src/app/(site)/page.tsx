@@ -85,14 +85,14 @@ const paths = [
   },
 ];
 
-export default function HomePage() {
-  const allCourses = listCourses();
+export default async function HomePage() {
+  const allCourses = await listCourses();
   const featured = allCourses.filter((c) => c.featured).slice(0, 4);
   const featuredCourses = featured.length ? featured : allCourses.slice(0, 4);
   const recorded = allCourses.slice(4, 12);
-  const workshops = listWorkshops();
-  const ebooks = listEbooks();
-  const bundles = listBundles();
+  const workshops = await listWorkshops();
+  const ebooks = await listEbooks();
+  const bundles = await listBundles();
   const bundle = bundles.find((b) => b.slug === "all-access-combo") ?? bundles[0];
   const aiCourse =
     allCourses.find((c) => c.slug === "ai-prompt-engineering") ?? allCourses[0];

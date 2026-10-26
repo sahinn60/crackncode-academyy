@@ -10,7 +10,7 @@ type Params = Promise<{ slug: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = await getPostBySlug(slug);
   if (!post) return { title: "লেখা পাওয়া যায়নি" };
   return { title: post.title, description: post.excerpt };
 }
@@ -32,10 +32,10 @@ function Inline({ text }: { text: string }) {
 
 export default async function BlogPostPage({ params }: { params: Params }) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = await getPostBySlug(slug);
   if (!post) notFound();
 
-  const related = listPosts().filter((p) => p.id !== post.id).slice(0, 2);
+  const related = (await listPosts()).filter((p) => p.id !== post.id).slice(0, 2);
   const blocks = post.content.split(/\n\n+/);
 
   return (

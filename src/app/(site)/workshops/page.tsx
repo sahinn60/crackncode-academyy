@@ -17,9 +17,9 @@ function timeOf(iso: string) {
 }
 
 export default async function WorkshopsPage() {
-  const workshops = listWorkshops();
+  const workshops = await listWorkshops();
   const user = await getCurrentUser();
-  const purchased = user ? listMyPurchases(user.id, "workshop") : [];
+  const purchased = user ? await listMyPurchases(user.id, "workshop") : [];
   const purchasedIds = new Set(purchased.map((o) => o.product_id));
 
   return (

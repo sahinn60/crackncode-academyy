@@ -26,7 +26,7 @@ export default async function AdminOrdersPage({
 }) {
   const { status: raw } = await searchParams;
   const status = filters.some((f) => f.value === raw) ? raw! : "all";
-  const orders = adminOrders(status);
+  const orders = await adminOrders(status);
   const paidTotal = orders
     .filter((o) => o.status === "paid")
     .reduce((sum, o) => sum + o.amount, 0);

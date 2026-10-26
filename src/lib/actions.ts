@@ -23,10 +23,10 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
   if (!emailRe.test(email)) return { error: "সঠিক ইমেইল ঠিকানা দিন।" };
   if (password.length < 8) return { error: "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।" };
 
-  const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+  const existing = await db.prepare("SELECT id FROM users WHERE email = ?").get(email);
   if (existing) return { error: "এই ইমেইলে একটি অ্যাকাউন্ট আছে। লগইন করুন।" };
 
-  const result = db
+  const result = await db
     .prepare(
       "INSERT INTO users (name, email, password_hash, role, created_at) VALUES (?, ?, ?, 'student', ?)"
     )
@@ -41,9 +41,9 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   const password = String(formData.get("password") || "");
   const next = String(formData.get("next") || "");
 
-  const user = db
+  const user = await db
     .prepare("SELECT id, password_hash, role FROM users WHERE email = ?")
-    .get(email) as { id: number; password_hash: string; role: string } | undefined;
+    .get<{ id: number; password_hash: string; role: string }>(email);
 
   if (!user || !verifyPassword(password, user.password_hash)) {
     return { error: "ইমেইল বা পাসওয়ার্ড সঠিক নয়।" };
@@ -65,7 +65,7 @@ export async function placeOrderAction(formData: FormData) {
   const id = Number(formData.get("product_id"));
   const method = String(formData.get("method") || "bkash");
 
-  const product = getCheckoutProduct(type, id);
+  const product = await getCheckoutProduct(type, id);
   if (!product) redirect("/courses");
   if (!user) {
     redirect(`/login?next=${encodeURIComponent(`/checkout/${product.type}/${product.id}`)}`);
@@ -75,14 +75,14 @@ export async function placeOrderAction(formData: FormData) {
   }
 
   if (type === "course") {
-    const existing = getEnrollment(user.id, product.id);
+    const existing = await getEnrollment(user.id, product.id);
     if (existing) redirect(`/learn/${product.slug}`);
   }
 
   const now = new Date().toISOString();
   const txn = `CN${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 9000 + 1000)}`;
 
-  const result = db
+  const result = await db
     .prepare(
       `INSERT INTO orders (user_id, product_type, product_id, title, amount, method, status, txn_id, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -92,8 +92,8 @@ export async function placeOrderAction(formData: FormData) {
   const orderId = Number(result.lastInsertRowid);
 
   if (product.amount === 0) {
-    const order = getOrderById(orderId);
-    if (order) fulfillOrder(order);
+    const order = await getOrderById(orderId);
+    if (order) await fulfillOrder(order);
     redirect(`/payment/success?order=${orderId}`);
   }
 
@@ -104,9 +104,9 @@ export async function confirmPaymentAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const orderId = Number(formData.get("order_id"));
-  const order = getOrderById(orderId);
+  const order = await getOrderById(orderId);
   if (!order || order.user_id !== user.id) redirect("/dashboard");
-  fulfillOrder(order);
+  await fulfillOrder(order);
   revalidatePath("/dashboard");
   redirect(`/payment/success?order=${order.id}`);
 }
@@ -115,10 +115,10 @@ export async function cancelPaymentAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const orderId = Number(formData.get("order_id"));
-  const order = getOrderById(orderId);
+  const order = await getOrderById(orderId);
   if (!order || order.user_id !== user.id) redirect("/dashboard");
-  cancelOrder(order);
-  const product = getCheckoutProduct(order.product_type, order.product_id);
+  await cancelOrder(order);
+  const product = await getCheckoutProduct(order.product_type, order.product_id);
   redirect(product ? productHref(product.type, product.slug) : "/courses");
 }
 
@@ -129,12 +129,14 @@ export async function completeLessonAction(formData: FormData) {
   const lessonKey = String(formData.get("lesson_key") || "");
   const redirectTo = String(formData.get("redirect_to") || "");
 
-  const enrollment = getEnrollment(user.id, courseId);
+  const enrollment = await getEnrollment(user.id, courseId);
   if (!enrollment) redirect("/dashboard");
 
-  db.prepare(
-    "INSERT OR IGNORE INTO lesson_progress (user_id, course_id, lesson_key, completed_at) VALUES (?, ?, ?, ?)"
-  ).run(user.id, courseId, lessonKey, new Date().toISOString());
+  await db
+    .prepare(
+      "INSERT OR IGNORE INTO lesson_progress (user_id, course_id, lesson_key, completed_at) VALUES (?, ?, ?, ?)"
+    )
+    .run(user.id, courseId, lessonKey, new Date().toISOString());
 
   revalidatePath("/dashboard");
   redirect(redirectTo.startsWith("/learn/") ? redirectTo : "/dashboard");
@@ -150,9 +152,11 @@ export async function contactAction(_prev: FormState, formData: FormData): Promi
   if (!emailRe.test(email)) return { error: "সঠিক ইমেইল ঠিকানা দিন।" };
   if (body.length < 10) return { error: "বার্তাটি অন্তত ১০ অক্ষরের হতে হবে।" };
 
-  db.prepare(
-    "INSERT INTO messages (name, email, subject, body, created_at) VALUES (?, ?, ?, ?, ?)"
-  ).run(name, email, subject, body, new Date().toISOString());
+  await db
+    .prepare(
+      "INSERT INTO messages (name, email, subject, body, created_at) VALUES (?, ?, ?, ?, ?)"
+    )
+    .run(name, email, subject, body, new Date().toISOString());
 
   return { success: "ধন্যবাদ! আপনার বার্তা পৌঁছেছে। আমরা ২৪ ঘণ্টার মধ্যে যোগাযোগ করব।" };
 }
@@ -160,9 +164,9 @@ export async function contactAction(_prev: FormState, formData: FormData): Promi
 export async function subscribeAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   if (!emailRe.test(email)) return { error: "সঠিক ইমেইল ঠিকানা দিন।" };
-  db.prepare(
-    "INSERT OR IGNORE INTO subscribers (email, created_at) VALUES (?, ?)"
-  ).run(email, new Date().toISOString());
+  await db
+    .prepare("INSERT OR IGNORE INTO subscribers (email, created_at) VALUES (?, ?)")
+    .run(email, new Date().toISOString());
   return { success: "সাবস্ক্রাইব সম্পন্ন! নতুন কোর্সের খবর পাবেন।" };
 }
 
@@ -172,7 +176,9 @@ export async function updateProfileAction(_prev: FormState, formData: FormData):
   const name = String(formData.get("name") || "").trim();
   const phone = String(formData.get("phone") || "").trim();
   if (name.length < 2) return { error: "আপনার নাম লিখুন।" };
-  db.prepare("UPDATE users SET name = ?, phone = ? WHERE id = ?").run(name, phone || null, user.id);
+  await db
+    .prepare("UPDATE users SET name = ?, phone = ? WHERE id = ?")
+    .run(name, phone || null, user.id);
   revalidatePath("/dashboard");
   return { success: "প্রোফাইল আপডেট হয়েছে।" };
 }
@@ -187,12 +193,14 @@ export async function changePasswordAction(_prev: FormState, formData: FormData)
   if (password.length < 8) return { error: "নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।" };
   if (password !== confirm) return { error: "নতুন পাসওয়ার্ড দুটি মিলছে না।" };
   if (password === current) return { error: "নতুন পাসওয়ার্ড আগেরটির মতোই — ভিন্ন পাসওয়ার্ড দিন।" };
-  const row = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(user.id) as
-    | { password_hash: string }
-    | undefined;
+  const row = await db
+    .prepare("SELECT password_hash FROM users WHERE id = ?")
+    .get<{ password_hash: string }>(user.id);
   if (!row || !verifyPassword(current, row.password_hash)) {
     return { error: "বর্তমান পাসওয়ার্ড সঠিক নয়।" };
   }
-  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(password), user.id);
+  await db
+    .prepare("UPDATE users SET password_hash = ? WHERE id = ?")
+    .run(hashPassword(password), user.id);
   return { success: "পাসওয়ার্ড পরিবর্তন হয়েছে। পরবর্তী লগইনে নতুন পাসওয়ার্ড ব্যবহার করুন।" };
 }

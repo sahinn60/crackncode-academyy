@@ -15,7 +15,7 @@ export default async function VerifyPage({
   searchParams: Promise<{ code?: string }>;
 }) {
   const { code } = await searchParams;
-  const result = code ? verifyCertificate(code) : null;
+  const result = code ? await verifyCertificate(code) : null;
   const user = await getCurrentUser();
 
   return (

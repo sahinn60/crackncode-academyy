@@ -13,7 +13,7 @@ type Params = Promise<{ orderId: string }>;
 export default async function PaymentPage({ params }: { params: Params }) {
   const { orderId } = await params;
   const user = await requireUser(`/payment/${orderId}`);
-  const order = getOrderById(Number(orderId));
+  const order = await getOrderById(Number(orderId));
 
   if (!order || order.user_id !== user.id) notFound();
   if (order.status === "paid") redirect(`/payment/success?order=${order.id}`);

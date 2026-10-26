@@ -33,8 +33,8 @@ const milestones = [
   { value: "২৪/৭", label: "কমিউনিটি সাপোর্ট" },
 ];
 
-export default function AboutPage() {
-  const courses = listCourses();
+export default async function AboutPage() {
+  const courses = await listCourses();
   const instructors = Array.from(
     new Map(
       courses.map((c) => [

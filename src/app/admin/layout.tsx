@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await requireAdmin();
-  const stats = adminStats();
+  const stats = await adminStats();
 
   return (
     <div className="min-h-dvh bg-page">

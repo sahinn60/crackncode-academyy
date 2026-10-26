@@ -4,8 +4,8 @@ import { bengaliNumber, formatDateShort } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "স্টুডেন্ট" };
 
-export default function AdminStudentsPage() {
-  const students = adminStudents();
+export default async function AdminStudentsPage() {
+  const students = await adminStudents();
   const active = students.filter((s) => s.enrollment_count > 0).length;
 
   return (

@@ -12,13 +12,14 @@ import {
   nextLesson,
   progressPercent,
 } from "@/lib/data";
+import type { CourseParsed } from "@/lib/types";
 import { bengaliNumber } from "@/lib/utils";
 
 type Params = Promise<{ slug: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
-  const course = getCourseBySlug(slug);
+  const course = await getCourseBySlug(slug);
   return { title: course ? `${course.title} — লার্নিং` : "লার্নিং" };
 }
 
@@ -31,15 +32,15 @@ export default async function LearnPage({
 }) {
   const { slug } = await params;
   const { lesson: lessonQuery } = await searchParams;
-  const course = getCourseBySlug(slug);
+  const course = await getCourseBySlug(slug);
   if (!course) notFound();
 
   const user = await requireUser(`/learn/${slug}`);
-  const enrollment = getEnrollment(user.id, course.id);
+  const enrollment = await getEnrollment(user.id, course.id);
   const isAdminPreview = !enrollment && user.role === "admin";
   if (!enrollment && !isAdminPreview) redirect(`/courses/${slug}`);
 
-  const completed = enrollment ? getCompletedLessons(user.id, course.id) : [];
+  const completed = enrollment ? await getCompletedLessons(user.id, course.id) : [];
   const completedSet = new Set(completed);
   const allLessons = getAllLessons(course);
   if (!allLessons.length) notFound();
@@ -238,7 +239,7 @@ function LessonList({
   currentKey,
   completedSet,
 }: {
-  course: ReturnType<typeof getCourseBySlug> & object;
+  course: CourseParsed;
   currentKey: string;
   completedSet: Set<string>;
 }) {

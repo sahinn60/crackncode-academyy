@@ -15,7 +15,7 @@ export default async function PaymentSuccessPage({
   const { order: orderParam } = await searchParams;
   const orderId = Number(orderParam);
   const user = await requireUser("/dashboard");
-  const order = Number.isInteger(orderId) ? getOrderById(orderId) : null;
+  const order = Number.isInteger(orderId) ? await getOrderById(orderId) : null;
 
   if (!order || order.user_id !== user.id) redirect("/dashboard");
   if (order.status === "pending") redirect(`/payment/${order.id}`);

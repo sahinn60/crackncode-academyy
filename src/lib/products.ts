@@ -17,9 +17,12 @@ export type CheckoutProduct = {
   courseIds: number[];
 };
 
-export function getCheckoutProduct(type: string, id: number): CheckoutProduct | null {
+export async function getCheckoutProduct(
+  type: string,
+  id: number
+): Promise<CheckoutProduct | null> {
   if (type === "course") {
-    const c = getCourseById(id);
+    const c = await getCourseById(id);
     if (!c || !c.published) return null;
     return {
       type: "course",
@@ -36,9 +39,9 @@ export function getCheckoutProduct(type: string, id: number): CheckoutProduct | 
     };
   }
   if (type === "bundle") {
-    const b = getBundleById(id);
+    const b = await getBundleById(id);
     if (!b) return null;
-    const courses = getBundleCourses(b);
+    const courses = await getBundleCourses(b);
     return {
       type: "bundle",
       id: b.id,
@@ -53,7 +56,7 @@ export function getCheckoutProduct(type: string, id: number): CheckoutProduct | 
     };
   }
   if (type === "ebook") {
-    const e = getEbookById(id);
+    const e = await getEbookById(id);
     if (!e) return null;
     return {
       type: "ebook",
@@ -69,7 +72,7 @@ export function getCheckoutProduct(type: string, id: number): CheckoutProduct | 
     };
   }
   if (type === "workshop") {
-    const w = getWorkshopById(id);
+    const w = await getWorkshopById(id);
     if (!w) return null;
     return {
       type: "workshop",

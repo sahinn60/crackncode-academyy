@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   description: "প্রোগ্রামিং, ক্যারিয়ার, AI ও ফ্রিল্যান্সিং নিয়ে বাংলায় ব্যবহারিক লেখা।",
 };
 
-export default function BlogPage() {
-  const posts = listPosts();
+export default async function BlogPage() {
+  const posts = await listPosts();
   const [featured, ...rest] = posts;
 
   return (

@@ -5,8 +5,8 @@ import { bengaliNumber, formatDate } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "মেসেজ" };
 
-export default function AdminMessagesPage() {
-  const messages = adminMessages();
+export default async function AdminMessagesPage() {
+  const messages = await adminMessages();
 
   return (
     <div className="space-y-6">

@@ -14,7 +14,7 @@ export default async function AdminCoursesPage({
   searchParams: Promise<{ saved?: string; deleted?: string }>;
 }) {
   const { saved, deleted } = await searchParams;
-  const courses = adminCourses();
+  const courses = await adminCourses();
   const published = courses.filter((c) => c.published).length;
   const totalEnrolled = courses.reduce((sum, c) => sum + c.enrolled, 0);
 

@@ -13,7 +13,7 @@ export default async function EditCoursePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const course = getCourseById(Number(id));
+  const course = await getCourseById(Number(id));
   if (!course) notFound();
 
   return (

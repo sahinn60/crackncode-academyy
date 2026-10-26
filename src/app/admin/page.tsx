@@ -10,10 +10,10 @@ import {
 
 export const metadata: Metadata = { title: "ড্যাশবোর্ড" };
 
-export default function AdminHomePage() {
-  const stats = adminStats();
-  const orders = adminRecentOrders(7);
-  const courses = adminCourses();
+export default async function AdminHomePage() {
+  const stats = await adminStats();
+  const orders = await adminRecentOrders(7);
+  const courses = await adminCourses();
   const topCourses = [...courses].sort((a, b) => b.enrolled - a.enrolled).slice(0, 5);
 
   const cards = [

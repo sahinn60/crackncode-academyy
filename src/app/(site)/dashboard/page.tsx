@@ -28,12 +28,12 @@ export default async function DashboardPage({
 }) {
   const user = await requireUser("/dashboard");
   await searchParams;
-  const enrollments = listMyEnrollments(user.id);
-  const orders = listMyOrders(user.id);
-  const ebooks = listMyPurchases(user.id, "ebook");
-  const workshops = listMyPurchases(user.id, "workshop");
+  const enrollments = await listMyEnrollments(user.id);
+  const orders = await listMyOrders(user.id);
+  const ebooks = await listMyPurchases(user.id, "ebook");
+  const workshops = await listMyPurchases(user.id, "workshop");
   const completedCourses = enrollments.filter((e) => e.percent === 100);
-  const recommended = listCourses({ limit: 3 }).filter(
+  const recommended = (await listCourses({ limit: 3 })).filter(
     (c) => !enrollments.some((e) => e.course.id === c.id)
   );
 

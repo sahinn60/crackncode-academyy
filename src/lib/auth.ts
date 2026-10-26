@@ -54,9 +54,9 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   if (!token) return null;
   const userId = verify(token);
   if (!userId) return null;
-  const row = db
+  const row = await db
     .prepare("SELECT id, name, email, role, phone, created_at FROM users WHERE id = ?")
-    .get(userId) as User | undefined;
+    .get<User>(userId);
   return row ?? null;
 });
 

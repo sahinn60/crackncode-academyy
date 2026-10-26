@@ -1,6 +1,6 @@
-import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
+import { createClient, type InValue } from "@libsql/client";
 import { hashPassword } from "./password";
 import {
   coursesSeed,
@@ -10,8 +10,15 @@ import {
   postsSeed,
 } from "./seed-data";
 
-const dbPath =
+const localPath =
   process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "crackncode.db");
+const remoteUrl = process.env.TURSO_DATABASE_URL || "";
+const url = remoteUrl || `file:${localPath.replace(/\\/g, "/")}`;
+
+const client = createClient({
+  url,
+  authToken: process.env.TURSO_AUTH_TOKEN || undefined,
+});
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -93,64 +100,128 @@ CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS bundles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  price INTEGER NOT NULL DEFAULT 0,
+  original_price INTEGER NOT NULL DEFAULT 0,
+  course_ids TEXT NOT NULL DEFAULT '[]',
+  gradient TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS workshops (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  starts_at TEXT NOT NULL,
+  duration TEXT NOT NULL DEFAULT '',
+  seats_total INTEGER NOT NULL DEFAULT 0,
+  seats_left INTEGER NOT NULL DEFAULT 0,
+  price INTEGER NOT NULL DEFAULT 0,
+  gradient TEXT NOT NULL DEFAULT '',
+  image TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS ebooks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  pages INTEGER NOT NULL DEFAULT 0,
+  price INTEGER NOT NULL DEFAULT 0,
+  gradient TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  excerpt TEXT NOT NULL DEFAULT '',
+  content TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '',
+  author TEXT NOT NULL DEFAULT '',
+  read_minutes INTEGER NOT NULL DEFAULT 5,
+  gradient TEXT NOT NULL DEFAULT '',
+  published_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_enrollments_user ON enrollments(user_id);
 CREATE INDEX IF NOT EXISTS idx_progress_user_course ON lesson_progress(user_id, course_id);
 `;
 
-function seed(db: DatabaseSync) {
-  const seeded = db.prepare("SELECT value FROM meta WHERE key = 'seed_version'").get() as
-    | { value: string }
-    | undefined;
-  if (seeded) return;
+type Args = InValue[];
+
+async function runRaw(sql: string, args: Args = []) {
+  return client.execute({ sql, args });
+}
+
+async function allRaw<T = Record<string, unknown>>(sql: string, args: Args = []) {
+  const result = await client.execute({ sql, args });
+  return result.rows as unknown as T[];
+}
+
+async function seed() {
+  const seeded = await allRaw<{ value: string }>(
+    "SELECT value FROM meta WHERE key = 'seed_version'"
+  );
+  if (seeded.length) return;
 
   const now = new Date().toISOString();
+  const lock = await runRaw(
+    "INSERT OR IGNORE INTO meta (key, value) VALUES ('seed_started', ?)",
+    [now]
+  );
+  if (lock.rowsAffected === 0) {
+    for (let i = 0; i < 100; i += 1) {
+      const done = await allRaw("SELECT 1 FROM meta WHERE key = 'seed_version'");
+      if (done.length) return;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return;
+  }
+
   const adminEmail = process.env.ADMIN_EMAIL || "admin@crackncode.academy";
   const adminPassword = process.env.ADMIN_PASSWORD || "Admin@12345";
-  db.prepare(
-    "INSERT OR IGNORE INTO users (name, email, password_hash, role, created_at) VALUES (?, ?, ?, 'admin', ?)"
-  ).run("CrackNcode Admin", adminEmail, hashPassword(adminPassword), now);
-
-  const insertCourse = db.prepare(`
-    INSERT INTO courses (
-      slug, title, subtitle, description, category, level, hours, lesson_count,
-      price, original_price, gradient, icon, featured, published,
-      instructor_name, instructor_title, instructor_bio, outcomes, curriculum, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
-  `);
+  await runRaw(
+    "INSERT OR IGNORE INTO users (name, email, password_hash, role, created_at) VALUES (?, ?, ?, 'admin', ?)",
+    ["CrackNcode Admin", adminEmail, hashPassword(adminPassword), now]
+  );
 
   const idBySlug = new Map<string, number>();
   for (const c of coursesSeed) {
     const lessonCount = c.curriculum.reduce((n, m) => n + m.lessons.length, 0);
-    const result = insertCourse.run(
-      c.slug,
-      c.title,
-      c.subtitle,
-      c.description,
-      c.category,
-      c.level,
-      c.hours,
-      lessonCount,
-      c.price,
-      c.original_price,
-      c.gradient,
-      c.icon,
-      c.featured,
-      c.instructor_name,
-      c.instructor_title,
-      c.instructor_bio,
-      JSON.stringify(c.outcomes),
-      JSON.stringify(c.curriculum),
-      now
+    const result = await runRaw(
+      `INSERT INTO courses (
+        slug, title, subtitle, description, category, level, hours, lesson_count,
+        price, original_price, gradient, icon, featured, published,
+        instructor_name, instructor_title, instructor_bio, outcomes, curriculum, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
+      [
+        c.slug,
+        c.title,
+        c.subtitle,
+        c.description,
+        c.category,
+        c.level,
+        c.hours,
+        lessonCount,
+        c.price,
+        c.original_price,
+        c.gradient,
+        c.icon,
+        c.featured,
+        c.instructor_name,
+        c.instructor_title,
+        c.instructor_bio,
+        JSON.stringify(c.outcomes),
+        JSON.stringify(c.curriculum),
+        now,
+      ]
     );
-    idBySlug.set(c.slug, Number(result.lastInsertRowid));
+    idBySlug.set(c.slug, Number(result.lastInsertRowid ?? 0));
   }
 
   const allIds = [...idBySlug.values()];
-  const insertBundle = db.prepare(`
-    INSERT INTO bundles (slug, title, description, price, original_price, course_ids, gradient)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
   for (const b of bundlesSeed) {
     const ids =
       b.course_slugs === "ALL"
@@ -158,62 +229,54 @@ function seed(db: DatabaseSync) {
         : Array.isArray(b.course_slugs)
           ? b.course_slugs.map((s) => idBySlug.get(s)).filter(Boolean)
           : [];
-    insertBundle.run(
-      b.slug,
-      b.title,
-      b.description,
-      b.price,
-      b.original_price,
-      JSON.stringify(ids),
-      b.gradient
+    await runRaw(
+      "INSERT INTO bundles (slug, title, description, price, original_price, course_ids, gradient) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [b.slug, b.title, b.description, b.price, b.original_price, JSON.stringify(ids), b.gradient]
     );
   }
 
-  const insertWorkshop = db.prepare(`
-    INSERT INTO workshops (slug, title, description, starts_at, duration, seats_total, seats_left, price, gradient)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
   for (const w of workshopsSeed) {
-    insertWorkshop.run(
-      w.slug,
-      w.title,
-      w.description,
-      w.starts_at,
-      w.duration,
-      w.seats_total,
-      w.seats_left,
-      w.price,
-      w.gradient
+    await runRaw(
+      "INSERT INTO workshops (slug, title, description, starts_at, duration, seats_total, seats_left, price, gradient) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        w.slug,
+        w.title,
+        w.description,
+        w.starts_at,
+        w.duration,
+        w.seats_total,
+        w.seats_left,
+        w.price,
+        w.gradient,
+      ]
     );
   }
 
-  const insertEbook = db.prepare(`
-    INSERT INTO ebooks (slug, title, description, pages, price, gradient)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
   for (const e of ebooksSeed) {
-    insertEbook.run(e.slug, e.title, e.description, e.pages, e.price, e.gradient);
-  }
-
-  const insertPost = db.prepare(`
-    INSERT INTO posts (slug, title, excerpt, content, category, author, read_minutes, gradient, published_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  for (const p of postsSeed) {
-    insertPost.run(
-      p.slug,
-      p.title,
-      p.excerpt,
-      p.content,
-      p.category,
-      p.author,
-      p.read_minutes,
-      p.gradient,
-      p.published_at
+    await runRaw(
+      "INSERT INTO ebooks (slug, title, description, pages, price, gradient) VALUES (?, ?, ?, ?, ?, ?)",
+      [e.slug, e.title, e.description, e.pages, e.price, e.gradient]
     );
   }
 
-  db.prepare("INSERT INTO meta (key, value) VALUES ('seed_version', '1')").run();
+  for (const p of postsSeed) {
+    await runRaw(
+      "INSERT INTO posts (slug, title, excerpt, content, category, author, read_minutes, gradient, published_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        p.slug,
+        p.title,
+        p.excerpt,
+        p.content,
+        p.category,
+        p.author,
+        p.read_minutes,
+        p.gradient,
+        p.published_at,
+      ]
+    );
+  }
+
+  await runRaw("INSERT INTO meta (key, value) VALUES ('seed_version', '1')");
 }
 
 const COURSE_IMAGES: Record<string, string> = {
@@ -237,91 +300,97 @@ const WORKSHOP_IMAGES: Record<string, string> = {
   "portfolio-review-live": "/images/courses/freelance.webp",
 };
 
-function hasColumn(
-  database: DatabaseSync,
-  table: "courses" | "workshops",
-  column: string
-): boolean {
-  const cols = database.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+async function hasColumn(table: "courses" | "workshops", column: string) {
+  const cols = await allRaw<{ name: string }>(`PRAGMA table_info(${table})`);
   return cols.some((c) => c.name === column);
 }
 
-function addColumn(database: DatabaseSync, table: "courses" | "workshops") {
-  if (hasColumn(database, table, "image")) return;
+async function addColumn(table: "courses" | "workshops") {
+  if (await hasColumn(table, "image")) return;
   try {
-    database.exec(`ALTER TABLE ${table} ADD COLUMN image TEXT NOT NULL DEFAULT ''`);
+    await runRaw(`ALTER TABLE ${table} ADD COLUMN image TEXT NOT NULL DEFAULT ''`);
   } catch (error) {
-    // Another build worker may have added it between the check and the ALTER.
+    // Another instance may have added it between the check and the ALTER.
     if (!String(error).includes("duplicate column name")) throw error;
   }
 }
 
-function applyImages(database: DatabaseSync) {
-  addColumn(database, "courses");
-  addColumn(database, "workshops");
-  const updateCourse = database.prepare("UPDATE courses SET image = ? WHERE slug = ?");
-  for (const [slug, image] of Object.entries(COURSE_IMAGES)) updateCourse.run(image, slug);
-  const updateWorkshop = database.prepare("UPDATE workshops SET image = ? WHERE slug = ?");
-  for (const [slug, image] of Object.entries(WORKSHOP_IMAGES)) updateWorkshop.run(image, slug);
+async function applyImages() {
+  await addColumn("courses");
+  await addColumn("workshops");
+  for (const [slug, image] of Object.entries(COURSE_IMAGES)) {
+    await runRaw("UPDATE courses SET image = ? WHERE slug = ?", [image, slug]);
+  }
+  for (const [slug, image] of Object.entries(WORKSHOP_IMAGES)) {
+    await runRaw("UPDATE workshops SET image = ? WHERE slug = ?", [image, slug]);
+  }
 }
 
-function createDb(): DatabaseSync {
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  const database = new DatabaseSync(dbPath);
-  database.exec("PRAGMA busy_timeout = 5000;");
-  database.exec("PRAGMA journal_mode = WAL;");
-  database.exec("PRAGMA foreign_keys = ON;");
-  database.exec(SCHEMA);  database.exec(`
-    CREATE TABLE IF NOT EXISTS bundles (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      slug TEXT NOT NULL UNIQUE,
-      title TEXT NOT NULL,
-      description TEXT NOT NULL DEFAULT '',
-      price INTEGER NOT NULL DEFAULT 0,
-      original_price INTEGER NOT NULL DEFAULT 0,
-      course_ids TEXT NOT NULL DEFAULT '[]',
-      gradient TEXT NOT NULL DEFAULT ''
-    );
-    CREATE TABLE IF NOT EXISTS workshops (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      slug TEXT NOT NULL UNIQUE,
-      title TEXT NOT NULL,
-      description TEXT NOT NULL DEFAULT '',
-      starts_at TEXT NOT NULL,
-      duration TEXT NOT NULL DEFAULT '',
-      seats_total INTEGER NOT NULL DEFAULT 0,
-      seats_left INTEGER NOT NULL DEFAULT 0,
-      price INTEGER NOT NULL DEFAULT 0,
-      gradient TEXT NOT NULL DEFAULT '',
-      image TEXT NOT NULL DEFAULT ''
-    );
-    CREATE TABLE IF NOT EXISTS ebooks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      slug TEXT NOT NULL UNIQUE,
-      title TEXT NOT NULL,
-      description TEXT NOT NULL DEFAULT '',
-      pages INTEGER NOT NULL DEFAULT 0,
-      price INTEGER NOT NULL DEFAULT 0,
-      gradient TEXT NOT NULL DEFAULT ''
-    );
-    CREATE TABLE IF NOT EXISTS posts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      slug TEXT NOT NULL UNIQUE,
-      title TEXT NOT NULL,
-      excerpt TEXT NOT NULL DEFAULT '',
-      content TEXT NOT NULL DEFAULT '',
-      category TEXT NOT NULL DEFAULT '',
-      author TEXT NOT NULL DEFAULT '',
-      read_minutes INTEGER NOT NULL DEFAULT 5,
-      gradient TEXT NOT NULL DEFAULT '',
-      published_at TEXT NOT NULL
-    );
-  `);
-  seed(database);
-  applyImages(database);
-  return database;
+async function init() {
+  if (!remoteUrl) {
+    fs.mkdirSync(path.dirname(localPath), { recursive: true });
+    for (const pragma of ["PRAGMA journal_mode = WAL;", "PRAGMA busy_timeout = 5000;"]) {
+      try {
+        await client.execute(pragma);
+      } catch {
+        // Pragmas are best-effort; the client still works without them.
+      }
+    }
+  }
+  try {
+    await client.execute("PRAGMA foreign_keys = ON;");
+  } catch {
+    // Remote Turso connections may reject foreign_keys pragmas.
+  }
+  await client.executeMultiple(SCHEMA);
+  await seed();
+  await applyImages();
 }
 
-const globalForDb = globalThis as unknown as { __cnDb?: DatabaseSync };
-export const db: DatabaseSync = globalForDb.__cnDb ?? createDb();
-globalForDb.__cnDb = db;
+let initPromise: Promise<void> | null = null;
+
+function ready() {
+  if (!initPromise) initPromise = init();
+  return initPromise;
+}
+
+class Statement {
+  private sql: string;
+
+  constructor(sql: string) {
+    this.sql = sql;
+  }
+
+  private async execute(args: Args) {
+    await ready();
+    return client.execute({ sql: this.sql, args });
+  }
+
+  async run(...args: Args) {
+    const result = await this.execute(args);
+    return {
+      lastInsertRowid: Number(result.lastInsertRowid ?? 0),
+      changes: result.rowsAffected,
+    };
+  }
+
+  async get<T = Record<string, unknown>>(...args: Args) {
+    const result = await this.execute(args);
+    return result.rows[0] as unknown as T | undefined;
+  }
+
+  async all<T = Record<string, unknown>>(...args: Args) {
+    const result = await this.execute(args);
+    return result.rows as unknown as T[];
+  }
+}
+
+export const db = {
+  prepare(sql: string) {
+    return new Statement(sql);
+  },
+  async exec(sql: string) {
+    await ready();
+    return client.executeMultiple(sql);
+  },
+};

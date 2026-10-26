@@ -21,17 +21,17 @@ export default async function CheckoutPage({
 }) {
   const { type, id } = await params;
   const { error } = await searchParams;
-  const product = getCheckoutProduct(type, Number(id));
+  const product = await getCheckoutProduct(type, Number(id));
   if (!product) notFound();
 
   const user = await requireUser(`/checkout/${type}/${id}`);
 
   if (product.type === "course") {
-    const existing = getEnrollment(user.id, product.id);
+    const existing = await getEnrollment(user.id, product.id);
     if (existing) redirect(`/learn/${product.slug}`);
   }
 
-  const alreadyPaid = listMyOrders(user.id).some(
+  const alreadyPaid = (await listMyOrders(user.id)).some(
     (o) => o.product_type === product.type && o.product_id === product.id && o.status === "paid"
   );
   if (alreadyPaid) redirect("/dashboard?already=1");

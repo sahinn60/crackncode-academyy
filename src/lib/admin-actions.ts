@@ -90,9 +90,9 @@ export async function saveCourseAction(
   if (!outcomes.length) return { error: "কমপক্ষে একটি শেখার ফলাফল (outcome) যোগ করুন।" };
   if (!curriculum) return { error: "কারিকুলামে কমপক্ষে একটি মডিউল ও একটি লেসন থাকতে হবে।" };
 
-  const duplicate = db
+  const duplicate = await db
     .prepare("SELECT id FROM courses WHERE slug = ? AND id != ?")
-    .get(slug, id) as { id: number } | undefined;
+    .get<{ id: number }>(slug, id);
   if (duplicate) return { error: "এই স্লাগে আরেকটি কোর্স আছে। ভিন্ন স্লাগ দিন।" };
 
   const lessonCount = curriculum.reduce((sum, m) => sum + m.lessons.length, 0);
@@ -119,19 +119,23 @@ export async function saveCourseAction(
   ];
 
   if (id) {
-    db.prepare(
-      `UPDATE courses SET slug = ?, title = ?, subtitle = ?, description = ?, category = ?,
+    await db
+      .prepare(
+        `UPDATE courses SET slug = ?, title = ?, subtitle = ?, description = ?, category = ?,
        level = ?, hours = ?, lesson_count = ?, price = ?, original_price = ?, gradient = ?,
        icon = ?, featured = ?, published = ?, instructor_name = ?, instructor_title = ?,
        instructor_bio = ?, outcomes = ?, curriculum = ? WHERE id = ?`
-    ).run(...values, id);
+      )
+      .run(...values, id);
   } else {
-    db.prepare(
-      `INSERT INTO courses (slug, title, subtitle, description, category, level, hours,
+    await db
+      .prepare(
+        `INSERT INTO courses (slug, title, subtitle, description, category, level, hours,
        lesson_count, price, original_price, gradient, icon, featured, published,
        instructor_name, instructor_title, instructor_bio, outcomes, curriculum, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(...values, new Date().toISOString());
+      )
+      .run(...values, new Date().toISOString());
   }
 
   revalidatePath("/admin/courses");
@@ -144,7 +148,9 @@ export async function saveCourseAction(
 export async function togglePublishAction(formData: FormData) {
   await requireAdmin();
   const id = Number(formData.get("id"));
-  db.prepare("UPDATE courses SET published = CASE published WHEN 1 THEN 0 ELSE 1 END WHERE id = ?").run(id);
+  await db
+    .prepare("UPDATE courses SET published = CASE published WHEN 1 THEN 0 ELSE 1 END WHERE id = ?")
+    .run(id);
   revalidatePath("/admin/courses");
   revalidatePath("/courses");
   revalidatePath("/");
@@ -153,37 +159,28 @@ export async function togglePublishAction(formData: FormData) {
 export async function deleteCourseAction(formData: FormData) {
   await requireAdmin();
   const id = Number(formData.get("id"));
-  const course = db.prepare("SELECT slug FROM courses WHERE id = ?").get(id) as
-    | { slug: string }
-    | undefined;
+  const course = await db
+    .prepare("SELECT slug FROM courses WHERE id = ?")
+    .get<{ slug: string }>(id);
   if (!course) redirect("/admin/courses");
 
-  db.exec("BEGIN");
-  try {
-    db.prepare("DELETE FROM lesson_progress WHERE course_id = ?").run(id);
-    db.prepare("DELETE FROM enrollments WHERE course_id = ?").run(id);
-    db.prepare("DELETE FROM courses WHERE id = ?").run(id);
-    const bundles = db.prepare("SELECT id, course_ids FROM bundles").all() as unknown as {
-      id: number;
-      course_ids: string;
-    }[];
-    for (const b of bundles) {
-      let ids: number[] = [];
-      try {
-        ids = JSON.parse(b.course_ids);
-      } catch {
-        continue;
-      }
-      if (!ids.includes(id)) continue;
-      db.prepare("UPDATE bundles SET course_ids = ? WHERE id = ?").run(
-        JSON.stringify(ids.filter((x) => x !== id)),
-        b.id
-      );
+  await db.prepare("DELETE FROM lesson_progress WHERE course_id = ?").run(id);
+  await db.prepare("DELETE FROM enrollments WHERE course_id = ?").run(id);
+  await db.prepare("DELETE FROM courses WHERE id = ?").run(id);
+  const bundles = await db
+    .prepare("SELECT id, course_ids FROM bundles")
+    .all<{ id: number; course_ids: string }>();
+  for (const b of bundles) {
+    let ids: number[] = [];
+    try {
+      ids = JSON.parse(b.course_ids);
+    } catch {
+      continue;
     }
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
+    if (!ids.includes(id)) continue;
+    await db
+      .prepare("UPDATE bundles SET course_ids = ? WHERE id = ?")
+      .run(JSON.stringify(ids.filter((x) => x !== id)), b.id);
   }
 
   revalidatePath("/admin/courses");
@@ -195,8 +192,8 @@ export async function deleteCourseAction(formData: FormData) {
 export async function adminMarkPaidAction(formData: FormData) {
   await requireAdmin();
   const id = Number(formData.get("id"));
-  const order = getOrderById(id);
-  if (order) fulfillOrder(order);
+  const order = await getOrderById(id);
+  if (order) await fulfillOrder(order);
   revalidatePath("/admin/orders");
   revalidatePath("/admin");
 }
@@ -204,8 +201,8 @@ export async function adminMarkPaidAction(formData: FormData) {
 export async function adminCancelOrderAction(formData: FormData) {
   await requireAdmin();
   const id = Number(formData.get("id"));
-  const order = getOrderById(id);
-  if (order) cancelOrder(order);
+  const order = await getOrderById(id);
+  if (order) await cancelOrder(order);
   revalidatePath("/admin/orders");
   revalidatePath("/admin");
 }
@@ -213,7 +210,7 @@ export async function adminCancelOrderAction(formData: FormData) {
 export async function deleteMessageAction(formData: FormData) {
   await requireAdmin();
   const id = Number(formData.get("id"));
-  db.prepare("DELETE FROM messages WHERE id = ?").run(id);
+  await db.prepare("DELETE FROM messages WHERE id = ?").run(id);
   revalidatePath("/admin/messages");
   revalidatePath("/admin");
 }

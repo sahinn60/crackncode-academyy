@@ -10,23 +10,23 @@ type Params = Promise<{ slug: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
-  const course = getCourseBySlug(slug);
+  const course = await getCourseBySlug(slug);
   if (!course) return { title: "কোর্স পাওয়া যায়নি" };
   return { title: course.title, description: course.subtitle };
 }
 
 export default async function CourseDetailPage({ params }: { params: Params }) {
   const { slug } = await params;
-  const course = getCourseBySlug(slug);
+  const course = await getCourseBySlug(slug);
   if (!course) notFound();
 
   const user = await getCurrentUser();
   if (!course.published && user?.role !== "admin") notFound();
-  const enrollment = user ? getEnrollment(user.id, course.id) : undefined;
-  const completed = enrollment && user ? getCompletedLessons(user.id, course.id) : [];
+  const enrollment = user ? await getEnrollment(user.id, course.id) : undefined;
+  const completed = enrollment && user ? await getCompletedLessons(user.id, course.id) : [];
   const percent = enrollment ? progressPercent(course, completed) : 0;
   const next = nextLesson(course, completed);
-  const related = listCourses({ category: course.category, limit: 4 }).filter(
+  const related = (await listCourses({ category: course.category, limit: 4 })).filter(
     (c) => c.id !== course.id
   ).slice(0, 3);
   const totalMinutes = course.curriculum.reduce(
