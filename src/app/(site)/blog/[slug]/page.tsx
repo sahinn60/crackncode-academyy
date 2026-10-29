@@ -4,14 +4,17 @@ import { notFound } from "next/navigation";
 import { Cover } from "@/components/ui";
 import { getPostBySlug, listPosts } from "@/lib/data";
 import { postImage } from "@/lib/post-images";
-import { formatDate } from "@/lib/utils";
+import { getLocale } from "@/lib/i18n-server";
+import { categoryLabel, pick } from "@/lib/i18n";
+import { formatDate, formatNumber } from "@/lib/utils";
 
 type Params = Promise<{ slug: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
+  const locale = await getLocale();
   const post = await getPostBySlug(slug);
-  if (!post) return { title: "লেখা পাওয়া যায়নি" };
+  if (!post) return { title: pick(locale, "লেখা পাওয়া যায়নি", "Article not found") };
   return { title: post.title, description: post.excerpt };
 }
 
@@ -32,6 +35,7 @@ function Inline({ text }: { text: string }) {
 
 export default async function BlogPostPage({ params }: { params: Params }) {
   const { slug } = await params;
+  const locale = await getLocale();
   const post = await getPostBySlug(slug);
   if (!post) notFound();
 
@@ -43,18 +47,24 @@ export default async function BlogPostPage({ params }: { params: Params }) {
       <article>
         <header className="border-b border-line bg-surface-2/50">
           <div className="container-cn max-w-4xl py-10 lg:py-14">
-            <nav className="flex flex-wrap items-center gap-2 text-xs text-muted" aria-label="ব্রেডক্রাম্ব">
-              <Link href="/" className="hover:text-ink">হোম</Link>
+            <nav
+              className="flex flex-wrap items-center gap-2 text-xs text-muted"
+              aria-label={pick(locale, "ব্রেডক্রাম্ব", "Breadcrumb")}
+            >
+              <Link href="/" className="hover:text-ink">{pick(locale, "হোম", "Home")}</Link>
               <span>/</span>
-              <Link href="/blog" className="hover:text-ink">ব্লগ</Link>
+              <Link href="/blog" className="hover:text-ink">{pick(locale, "ব্লগ", "Blog")}</Link>
               <span>/</span>
-              <span className="text-ink">{post.category}</span>
+              <span className="text-ink">{categoryLabel(post.category, locale)}</span>
             </nav>
             <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-muted">
-              <span className="pill pill-orange">{post.category}</span>
-              <span>{formatDate(post.published_at)}</span>
+              <span className="pill pill-orange">{categoryLabel(post.category, locale)}</span>
+              <span>{formatDate(post.published_at, locale)}</span>
               <span>•</span>
-              <span>{post.read_minutes} মিনিট পড়া</span>
+              <span>
+                {formatNumber(post.read_minutes, locale)}{" "}
+                {pick(locale, "মিনিট পড়া", "min read")}
+              </span>
             </div>
             <h1 className="section-title mt-4 text-3xl md:text-[2.8rem]">{post.title}</h1>
             <p className="mt-3 text-muted">{post.excerpt}</p>
@@ -105,13 +115,23 @@ export default async function BlogPostPage({ params }: { params: Params }) {
 
           <div className="mx-auto mt-10 max-w-3xl rounded-2xl border-2 border-line bg-surface p-6 shadow-[5px_5px_0_var(--shadow-color)] sm:flex sm:items-center sm:justify-between sm:gap-6">
             <div>
-              <p className="font-display text-lg font-bold">পড়া শেষ? এবার হাতে-কলমে শুরু করুন</p>
+              <p className="font-display text-lg font-bold">
+                {pick(
+                  locale,
+                  "পড়া শেষ? এবার হাতে-কলমে শুরু করুন",
+                  "Finished reading? Now start building"
+                )}
+              </p>
               <p className="mt-1 text-sm text-muted">
-                প্রজেক্ট-বেসড কোর্সে শিখুন, সার্টিফিকেট নিন।
+                {pick(
+                  locale,
+                  "প্রজেক্ট-বেসড কোর্সে শিখুন, সার্টিফিকেট নিন।",
+                  "Learn with project-based courses and earn a certificate."
+                )}
               </p>
             </div>
             <Link href="/courses" className="btn btn-primary mt-4 shrink-0 sm:mt-0">
-              কোর্স দেখুন
+              {pick(locale, "কোর্স দেখুন", "View courses")}
             </Link>
           </div>
         </div>
@@ -120,7 +140,7 @@ export default async function BlogPostPage({ params }: { params: Params }) {
       {related.length > 0 && (
         <section className="border-t border-line bg-surface-2/40 py-12">
           <div className="container-cn">
-            <h2 className="section-title text-2xl">আরও পড়ুন</h2>
+            <h2 className="section-title text-2xl">{pick(locale, "আরও পড়ুন", "More to read")}</h2>
             <div className="mt-6 grid gap-5 md:grid-cols-2">
               {related.map((p) => (
                 <Link
@@ -139,11 +159,13 @@ export default async function BlogPostPage({ params }: { params: Params }) {
                     <Cover gradient={p.gradient} icon="✎" className="h-24 w-24 shrink-0 rounded-xl" />
                   )}
                   <div>
-                    <p className="text-[0.68rem] font-semibold text-orange-deep">{p.category}</p>
+                    <p className="text-[0.68rem] font-semibold text-orange-deep">
+                      {categoryLabel(p.category, locale)}
+                    </p>
                     <h3 className="font-display mt-1 text-base font-bold leading-snug group-hover:text-orange-deep">
                       {p.title}
                     </h3>
-                    <p className="mt-1 text-[0.7rem] text-muted">{formatDate(p.published_at)}</p>
+                    <p className="mt-1 text-[0.7rem] text-muted">{formatDate(p.published_at, locale)}</p>
                   </div>
                 </Link>
               ))}

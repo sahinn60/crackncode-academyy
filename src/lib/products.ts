@@ -1,5 +1,8 @@
 import "server-only";
 import { getBundleById, getBundleCourses, getCourseById, getEbookById, getWorkshopById } from "./data";
+import { getLocale } from "./i18n-server";
+import { pick } from "./i18n";
+import { formatNumber } from "./utils";
 
 export type CheckoutType = "course" | "bundle" | "ebook" | "workshop";
 
@@ -21,6 +24,7 @@ export async function getCheckoutProduct(
   type: string,
   id: number
 ): Promise<CheckoutProduct | null> {
+  const locale = await getLocale();
   if (type === "course") {
     const c = await getCourseById(id);
     if (!c || !c.published) return null;
@@ -34,7 +38,11 @@ export async function getCheckoutProduct(
       gradient: c.gradient,
       icon: c.icon,
       image: c.image,
-      meta: `${c.lesson_count}টি লেসন • ${c.hours} ঘণ্টা`,
+      meta: pick(
+        locale,
+        `${formatNumber(c.lesson_count, locale)}টি লেসন • ${formatNumber(c.hours, locale)} ঘণ্টা`,
+        `${formatNumber(c.lesson_count, locale)} lessons • ${formatNumber(c.hours, locale)} hours`
+      ),
       courseIds: [c.id],
     };
   }
@@ -51,7 +59,11 @@ export async function getCheckoutProduct(
       originalPrice: b.original_price,
       gradient: b.gradient,
       icon: "PKG",
-      meta: `${courses.length}টি কোর্স একসাথে`,
+      meta: pick(
+        locale,
+        `${formatNumber(courses.length, locale)}টি কোর্স একসাথে`,
+        `${formatNumber(courses.length, locale)} courses together`
+      ),
       courseIds: courses.map((c) => c.id),
     };
   }
@@ -67,7 +79,11 @@ export async function getCheckoutProduct(
       originalPrice: 0,
       gradient: e.gradient,
       icon: "PDF",
-      meta: `${e.pages} পেজ`,
+      meta: pick(
+        locale,
+        `${formatNumber(e.pages, locale)} পেজ`,
+        `${formatNumber(e.pages, locale)} pages`
+      ),
       courseIds: [],
     };
   }
@@ -84,7 +100,7 @@ export async function getCheckoutProduct(
       gradient: w.gradient,
       icon: "LIVE",
       image: w.image,
-      meta: `${w.duration} • লাইভ অনলাইন`,
+      meta: pick(locale, `${w.duration} • লাইভ অনলাইন`, `${w.duration} • live online`),
       courseIds: [],
     };
   }

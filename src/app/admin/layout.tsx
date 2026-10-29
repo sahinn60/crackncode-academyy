@@ -3,17 +3,26 @@ import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AdminNav } from "@/components/admin-nav";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { logoutAction } from "@/lib/actions";
 import { requireAdmin } from "@/lib/auth";
 import { adminStats } from "@/lib/data";
+import { getLocale } from "@/lib/i18n-server";
+import { pick } from "@/lib/i18n";
 
-export const metadata: Metadata = {
-  title: { default: "অ্যাডমিন প্যানেল", template: "%s · অ্যাডমিন" },
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return {
+    title: {
+      default: pick(locale, "অ্যাডমিন প্যানেল", "Admin Panel"),
+      template: pick(locale, "%s · অ্যাডমিন", "%s · Admin"),
+    },
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireAdmin();
+  const [user, locale] = await Promise.all([requireAdmin(), getLocale()]);
   const stats = await adminStats();
 
   return (
@@ -29,10 +38,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="flex items-center gap-2">
             <span className="hidden sm:block">
               <Link href="/" className="btn btn-ghost btn-sm">
-                সাইট দেখুন
+                {pick(locale, "সাইট দেখুন", "View site")}
               </Link>
             </span>
-            <ThemeToggle />
+            <LocaleSwitcher locale={locale} />
+            <ThemeToggle locale={locale} />
             <span className="hidden items-center gap-2 rounded-full border border-line-soft bg-surface py-1 pl-1 pr-3 md:flex">
               <span className="grid h-7 w-7 place-items-center rounded-full bg-navy font-mono text-xs font-bold text-cream">
                 {user.name.trim().charAt(0).toUpperCase()}
@@ -41,7 +51,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </span>
             <form action={logoutAction}>
               <button type="submit" className="btn btn-outline btn-sm">
-                লগআউট
+                {pick(locale, "লগআউট", "Log out")}
               </button>
             </form>
           </div>
@@ -51,14 +61,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="container-cn grid gap-6 py-6 lg:grid-cols-[15rem_1fr] lg:gap-8 lg:py-8">
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-2xl border border-line-soft bg-surface p-2.5">
-            <AdminNav messageCount={stats.messages} />
+            <AdminNav messageCount={stats.messages} locale={locale} />
             <div className="mt-2 hidden border-t border-line-soft p-2 lg:block">
               <Link href="/admin/courses/new" className="btn btn-primary btn-sm w-full">
-                + নতুন কোর্স
+                {pick(locale, "+ নতুন কোর্স", "+ New course")}
               </Link>
               <p className="mt-3 px-1 text-[0.65rem] leading-relaxed text-muted">
-                পেমেন্ট মোড: <span className="font-semibold text-orange-deep">ডেমো</span> — সব
-                লেনদেন ম্যানুয়ালি যাচাই করুন।
+                {pick(locale, "পেমেন্ট মোড:", "Payment mode:")}{" "}
+                <span className="font-semibold text-orange-deep">
+                  {pick(locale, "ডেমো", "Demo")}
+                </span>{" "}
+                {pick(
+                  locale,
+                  "— সব লেনদেন ম্যানুয়ালি যাচাই করুন।",
+                  "— verify all transactions manually."
+                )}
               </p>
             </div>
           </div>
@@ -69,9 +86,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       <footer className="border-t border-line-soft py-5">
         <div className="container-cn flex flex-wrap items-center justify-between gap-2 text-[0.7rem] text-muted">
-          <span>CrackNcode Academy · অ্যাডমিন কনসোল</span>
+          <span>
+            CrackNcode Academy · {pick(locale, "অ্যাডমিন কনসোল", "Admin console")}
+          </span>
           <Link href="/dashboard" className="hover:text-ink">
-            স্টুডেন্ট ড্যাশবোর্ড →
+            {pick(locale, "স্টুডেন্ট ড্যাশবোর্ড →", "Student dashboard →")}
           </Link>
         </div>
       </footer>

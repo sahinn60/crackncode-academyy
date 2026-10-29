@@ -6,9 +6,14 @@ import { requireUser } from "@/lib/auth";
 import { getEnrollment, listMyOrders } from "@/lib/data";
 import { getCheckoutProduct } from "@/lib/products";
 import { placeOrderAction } from "@/lib/actions";
+import { pick } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n-server";
 import { discountPercent, formatTaka } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "চেকআউট" };
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return { title: pick(locale, "চেকআউট", "Checkout") };
+}
 
 type Params = Promise<{ type: string; id: string }>;
 
@@ -19,6 +24,7 @@ export default async function CheckoutPage({
   params: Params;
   searchParams: Promise<{ error?: string }>;
 }) {
+  const locale = await getLocale();
   const { type, id } = await params;
   const { error } = await searchParams;
   const product = await getCheckoutProduct(type, Number(id));
@@ -43,16 +49,23 @@ export default async function CheckoutPage({
     <>
       <section className="border-b border-line bg-surface-2/50">
         <div className="container-cn py-8 lg:py-10">
-          <nav className="flex flex-wrap items-center gap-2 text-xs text-muted" aria-label="ব্রেডক্রাম্ব">
-            <Link href="/" className="hover:text-ink">হোম</Link>
+          <nav
+            className="flex flex-wrap items-center gap-2 text-xs text-muted"
+            aria-label={pick(locale, "ব্রেডক্রাম্ব", "Breadcrumb")}
+          >
+            <Link href="/" className="hover:text-ink">{pick(locale, "হোম", "Home")}</Link>
             <span>/</span>
-            <Link href="/courses" className="hover:text-ink">কোর্স</Link>
+            <Link href="/courses" className="hover:text-ink">{pick(locale, "কোর্স", "Courses")}</Link>
             <span>/</span>
-            <span className="text-ink">চেকআউট</span>
+            <span className="text-ink">{pick(locale, "চেকআউট", "Checkout")}</span>
           </nav>
-          <h1 className="section-title mt-3 text-2xl md:text-3xl">চেকআউট</h1>
+          <h1 className="section-title mt-3 text-2xl md:text-3xl">{pick(locale, "চেকআউট", "Checkout")}</h1>
           <p className="mt-1 text-sm text-muted">
-            আপনার অর্ডার নিশ্চিত করুন — তারপর পেমেন্ট ধাপে যাবেন।
+            {pick(
+              locale,
+              "আপনার অর্ডার নিশ্চিত করুন — তারপর পেমেন্ট ধাপে যাবেন।",
+              "Confirm your order — then you'll move on to the payment step."
+            )}
           </p>
         </div>
       </section>
@@ -64,9 +77,9 @@ export default async function CheckoutPage({
 
           <div className="rounded-2xl border border-line-soft bg-surface p-6">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-lg font-bold">অ্যাকাউন্ট</h2>
+              <h2 className="font-display text-lg font-bold">{pick(locale, "অ্যাকাউন্ট", "Account")}</h2>
               <Link href="/dashboard" className="text-xs font-semibold text-orange-deep hover:underline">
-                প্রোফাইল
+                {pick(locale, "প্রোফাইল", "Profile")}
               </Link>
             </div>
             <div className="mt-4 flex items-center gap-3 rounded-xl bg-surface-2 p-3">
@@ -79,20 +92,24 @@ export default async function CheckoutPage({
               </div>
             </div>
             <p className="mt-3 text-[0.72rem] text-muted">
-              অর্ডার ও কোর্স অ্যাক্সেস এই অ্যাকাউন্টে যুক্ত হবে।
+              {pick(
+                locale,
+                "অর্ডার ও কোর্স অ্যাক্সেস এই অ্যাকাউন্টে যুক্ত হবে।",
+                "Orders and course access will be added to this account."
+              )}
             </p>
           </div>
 
           <div className="rounded-2xl border border-line-soft bg-surface p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-display text-lg font-bold">পেমেন্ট মাধ্যম</h2>
-              <span className="pill pill-orange">ডেমো মোড</span>
+              <h2 className="font-display text-lg font-bold">{pick(locale, "পেমেন্ট মাধ্যম", "Payment method")}</h2>
+              <span className="pill pill-orange">{pick(locale, "ডেমো মোড", "Demo mode")}</span>
             </div>
             <div className="mt-4 space-y-2.5">
               {[
-                { value: "bkash", name: "bKash", desc: "মোবাইল ব্যাংকিং — সবচেয়ে জনপ্রিয়", badge: "bKash", color: "#e2136e" },
-                { value: "nagad", name: "Nagad", desc: "মোবাইল ব্যাংকিং — দ্রুত পেমেন্ট", badge: "Nagad", color: "#ee1c25" },
-                { value: "card", name: "কার্ড", desc: "Visa / Mastercard (ডেমো)", badge: "CARD", color: "#0b1530" },
+                { value: "bkash", name: "bKash", desc: pick(locale, "মোবাইল ব্যাংকিং — সবচেয়ে জনপ্রিয়", "Mobile banking — most popular"), badge: "bKash", color: "#e2136e" },
+                { value: "nagad", name: "Nagad", desc: pick(locale, "মোবাইল ব্যাংকিং — দ্রুত পেমেন্ট", "Mobile banking — fast payment"), badge: "Nagad", color: "#ee1c25" },
+                { value: "card", name: pick(locale, "কার্ড", "Card"), desc: pick(locale, "Visa / Mastercard (ডেমো)", "Visa / Mastercard (demo)"), badge: "CARD", color: "#090E16" },
               ].map((m, i) => (
                 <label key={m.value} className="method-card">
                   <input
@@ -100,7 +117,7 @@ export default async function CheckoutPage({
                     name="method"
                     value={m.value}
                     defaultChecked={i === 0}
-                    className="accent-[#f39322]"
+                    className="accent-[#ED002B]"
                   />
                   <span
                     className="grid h-9 w-12 shrink-0 place-items-center rounded-md text-[0.6rem] font-bold text-white"
@@ -116,31 +133,38 @@ export default async function CheckoutPage({
               ))}
             </div>
             <div className="mt-4 rounded-xl border border-mustard/50 bg-mustard/15 px-4 py-3 text-[0.72rem] leading-relaxed text-ink">
-              <strong className="font-semibold">ডেমো পেমেন্ট:</strong> এই মুহূর্তে কোনো টাকা কাটা হবে
-              না। পরের ধাপে পেমেন্ট নিশ্চিত করলেই কোর্স অ্যাক্সেস চালু হবে। লাইভ bKash/Nagad
-              চালু করতে মার্চেন্ট অ্যাকাউন্ট সংযুক্ত করতে হবে।
+              <strong className="font-semibold">{pick(locale, "ডেমো পেমেন্ট:", "Demo payment:")}</strong>{" "}
+              {pick(
+                locale,
+                "এই মুহূর্তে কোনো টাকা কাটা হবে না। পরের ধাপে পেমেন্ট নিশ্চিত করলেই কোর্স অ্যাক্সেস চালু হবে। লাইভ bKash/Nagad চালু করতে মার্চেন্ট অ্যাকাউন্ট সংযুক্ত করতে হবে।",
+                "no money will be charged right now. Course access activates as soon as you confirm payment in the next step. To enable live bKash/Nagad, a merchant account must be connected."
+              )}
             </div>
           </div>
 
           {error === "method" && (
             <p className="rounded-lg border border-live/30 bg-live/10 px-3 py-2 text-sm text-live">
-              পেমেন্ট মাধ্যম সঠিকভাবে বেছে নিন।
+              {pick(locale, "পেমেন্ট মাধ্যম সঠিকভাবে বেছে নিন।", "Please choose a payment method.")}
             </p>
           )}
 
           <button type="submit" className="btn btn-primary btn-lg w-full">
-            {isFree ? "ফ্রি রেজিস্টার নিশ্চিত করুন" : "পেমেন্টে এগিয়ে যান"}
+            {isFree
+              ? pick(locale, "ফ্রি রেজিস্টার নিশ্চিত করুন", "Confirm free registration")
+              : pick(locale, "পেমেন্টে এগিয়ে যান", "Continue to payment")}
           </button>
           <p className="text-center text-[0.7rem] text-muted">
-            এগিয়ে গেলে আপনি{" "}
-            <Link href="/terms" className="underline">ব্যবহারের শর্ত</Link> ও{" "}
-            <Link href="/refund" className="underline">রিফান্ড নীতি</Link> মেনে নিচ্ছেন।
+            {pick(locale, "এগিয়ে গেলে আপনি", "By continuing you agree to our")}{" "}
+            <Link href="/terms" className="underline">{pick(locale, "ব্যবহারের শর্ত", "Terms of Use")}</Link>{" "}
+            {pick(locale, "ও", "and")}{" "}
+            <Link href="/refund" className="underline">{pick(locale, "রিফান্ড নীতি", "Refund Policy")}</Link>
+            {pick(locale, " মেনে নিচ্ছেন।", ".")}
           </p>
         </form>
 
         <aside className="lg:sticky lg:top-28 lg:self-start">
           <div className="rounded-2xl border-2 border-line bg-surface p-5 shadow-[6px_6px_0_var(--shadow-color)]">
-            <h2 className="font-display text-lg font-bold">অর্ডার সারাংশ</h2>
+            <h2 className="font-display text-lg font-bold">{pick(locale, "অর্ডার সারাংশ", "Order summary")}</h2>
             <div className="mt-4 flex gap-3">
               {product.image ? (
                 <img
@@ -158,12 +182,12 @@ export default async function CheckoutPage({
               <div className="min-w-0">
                 <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-orange-deep">
                   {product.type === "course"
-                    ? "কোর্স"
+                    ? pick(locale, "কোর্স", "Course")
                     : product.type === "bundle"
-                      ? "বান্ডেল"
+                      ? pick(locale, "বান্ডেল", "Bundle")
                       : product.type === "ebook"
-                        ? "ই-বুক"
-                        : "ওয়ার্কশপ"}
+                        ? pick(locale, "ই-বুক", "E-book")
+                        : pick(locale, "ওয়ার্কশপ", "Workshop")}
                 </p>
                 <h3 className="font-display mt-0.5 text-sm font-bold leading-snug">{product.title}</h3>
                 <p className="mt-1 text-[0.68rem] text-muted">{product.meta}</p>
@@ -172,27 +196,31 @@ export default async function CheckoutPage({
 
             <div className="mt-5 space-y-2 border-t border-line-soft pt-4 text-sm">
               <div className="flex justify-between text-muted">
-                <span>মূল্য</span>
-                <span>{formatTaka(product.originalPrice || product.amount)}</span>
+                <span>{pick(locale, "মূল্য", "Price")}</span>
+                <span>{formatTaka(product.originalPrice || product.amount, locale)}</span>
               </div>
               {off > 0 && (
                 <div className="flex justify-between text-green">
-                  <span>ছাড়</span>
-                  <span>- {formatTaka(product.originalPrice - product.amount)}</span>
+                  <span>{pick(locale, "ছাড়", "Discount")}</span>
+                  <span>- {formatTaka(product.originalPrice - product.amount, locale)}</span>
                 </div>
               )}
               <div className="flex items-center justify-between border-t border-line-soft pt-3 text-base font-bold">
-                <span>সর্বমোট</span>
+                <span>{pick(locale, "সর্বমোট", "Total")}</span>
                 <span className="font-display text-xl">
-                  {isFree ? "ফ্রি" : formatTaka(product.amount)}
+                  {isFree ? pick(locale, "ফ্রি", "Free") : formatTaka(product.amount, locale)}
                 </span>
               </div>
             </div>
 
             <div className="mt-4 space-y-2 rounded-xl bg-surface-2 p-3 text-[0.7rem] text-muted">
-              <p>✓ লাইফটাইম অ্যাক্সেস</p>
-              <p>✓ যাচাইযোগ্য সার্টিফিকেট {product.type === "course" || product.type === "bundle" ? "ও প্রজেক্ট" : ""}</p>
-              <p>✓ নিরাপদ অর্ডার প্রসেস</p>
+              <p>{pick(locale, "✓ লাইফটাইম অ্যাক্সেস", "✓ Lifetime access")}</p>
+              <p>
+                {product.type === "course" || product.type === "bundle"
+                  ? pick(locale, "✓ যাচাইযোগ্য সার্টিফিকেট ও প্রজেক্ট", "✓ Verifiable certificate and projects")
+                  : pick(locale, "✓ যাচাইযোগ্য সার্টিফিকেট", "✓ Verifiable certificate")}
+              </p>
+              <p>{pick(locale, "✓ নিরাপদ অর্ডার প্রসেস", "✓ Secure order process")}</p>
             </div>
           </div>
         </aside>

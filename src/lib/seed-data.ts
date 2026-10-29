@@ -1,18 +1,18 @@
 import type { Module } from "./types";
 
 export const G = {
-  web: "linear-gradient(135deg,#0b1530 0%,#1c2b57 45%,#2a6fbf 100%)",
-  python: "linear-gradient(135deg,#0b1530 0%,#16734a 60%,#3dbe84 100%)",
-  ai: "linear-gradient(135deg,#0b1530 0%,#e8641f 60%,#f2c14e 100%)",
-  react: "linear-gradient(135deg,#0b1530 0%,#121f42 50%,#7fb0ea 100%)",
-  cp: "linear-gradient(135deg,#121f42 0%,#e8641f 70%,#f2c14e 100%)",
-  freelance: "linear-gradient(135deg,#0b1530 0%,#16734a 55%,#7fb0ea 100%)",
-  cyber: "linear-gradient(135deg,#0b1530 0%,#121f42 45%,#e5484d 100%)",
-  data: "linear-gradient(135deg,#121f42 0%,#2a6fbf 55%,#3dbe84 100%)",
-  flutter: "linear-gradient(135deg,#0b1530 0%,#2a6fbf 60%,#7fb0ea 100%)",
-  design: "linear-gradient(135deg,#0b1530 0%,#f39322 60%,#f2c14e 100%)",
-  devops: "linear-gradient(135deg,#0b1530 0%,#1c2b57 50%,#3dbe84 100%)",
-  wp: "linear-gradient(135deg,#121f42 0%,#2a6fbf 55%,#f2c14e 100%)",
+  web: "linear-gradient(135deg,#090E16 0%,#47000E 45%,#ED002B 100%)",
+  python: "linear-gradient(135deg,#47000E 0%,#B80022 55%,#ED002B 100%)",
+  ai: "linear-gradient(135deg,#090E16 0%,#B80022 60%,#ED002B 100%)",
+  react: "linear-gradient(135deg,#10131C 0%,#47000E 50%,#ED002B 100%)",
+  cp: "linear-gradient(135deg,#47000E 0%,#ED002B 70%,#10131C 100%)",
+  freelance: "linear-gradient(160deg,#090E16 0%,#47000E 55%,#ED002B 100%)",
+  cyber: "linear-gradient(135deg,#10131C 0%,#47000E 45%,#B80022 100%)",
+  data: "linear-gradient(150deg,#47000E 0%,#B80022 55%,#ED002B 100%)",
+  flutter: "linear-gradient(135deg,#090E16 0%,#ED002B 60%,#47000E 100%)",
+  design: "linear-gradient(135deg,#ED002B 0%,#B80022 55%,#090E16 100%)",
+  devops: "linear-gradient(135deg,#090E16 0%,#10131C 45%,#ED002B 100%)",
+  wp: "linear-gradient(135deg,#47000E 0%,#10131C 55%,#B80022 100%)",
 };
 
 function mod(title: string, lessons: [string, number][]): Module {

@@ -7,22 +7,24 @@ import { requireAdmin } from "./auth";
 import { getOrderById } from "./data";
 import { fulfillOrder, cancelOrder } from "./orders";
 import { slugify } from "./utils";
+import { getLocale } from "./i18n-server";
+import { pick } from "./i18n";
 import type { FormState } from "./actions";
 import type { Module } from "./types";
 
 const gradients = new Set([
-  "linear-gradient(135deg,#0b1530 0%,#1c2b57 45%,#2a6fbf 100%)",
-  "linear-gradient(135deg,#0b1530 0%,#16734a 60%,#3dbe84 100%)",
-  "linear-gradient(135deg,#0b1530 0%,#e8641f 60%,#f2c14e 100%)",
-  "linear-gradient(135deg,#0b1530 0%,#121f42 50%,#7fb0ea 100%)",
-  "linear-gradient(135deg,#121f42 0%,#e8641f 70%,#f2c14e 100%)",
-  "linear-gradient(135deg,#0b1530 0%,#16734a 55%,#7fb0ea 100%)",
-  "linear-gradient(135deg,#0b1530 0%,#121f42 45%,#e5484d 100%)",
-  "linear-gradient(135deg,#121f42 0%,#2a6fbf 55%,#3dbe84 100%)",
-  "linear-gradient(135deg,#0b1530 0%,#2a6fbf 60%,#7fb0ea 100%)",
-  "linear-gradient(135deg,#0b1530 0%,#f39322 60%,#f2c14e 100%)",
-  "linear-gradient(135deg,#0b1530 0%,#1c2b57 50%,#3dbe84 100%)",
-  "linear-gradient(135deg,#121f42 0%,#2a6fbf 55%,#f2c14e 100%)",
+  "linear-gradient(135deg,#090E16 0%,#47000E 45%,#ED002B 100%)",
+  "linear-gradient(135deg,#47000E 0%,#B80022 55%,#ED002B 100%)",
+  "linear-gradient(135deg,#090E16 0%,#B80022 60%,#ED002B 100%)",
+  "linear-gradient(135deg,#10131C 0%,#47000E 50%,#ED002B 100%)",
+  "linear-gradient(135deg,#47000E 0%,#ED002B 70%,#10131C 100%)",
+  "linear-gradient(160deg,#090E16 0%,#47000E 55%,#ED002B 100%)",
+  "linear-gradient(135deg,#10131C 0%,#47000E 45%,#B80022 100%)",
+  "linear-gradient(150deg,#47000E 0%,#B80022 55%,#ED002B 100%)",
+  "linear-gradient(135deg,#090E16 0%,#ED002B 60%,#47000E 100%)",
+  "linear-gradient(135deg,#ED002B 0%,#B80022 55%,#090E16 100%)",
+  "linear-gradient(135deg,#090E16 0%,#10131C 45%,#ED002B 100%)",
+  "linear-gradient(135deg,#47000E 0%,#10131C 55%,#B80022 100%)",
 ]);
 
 function parseCurriculum(raw: string): Module[] | null {
@@ -54,6 +56,7 @@ export async function saveCourseAction(
   formData: FormData
 ): Promise<FormState> {
   await requireAdmin();
+  const locale = await getLocale();
 
   const id = Number(formData.get("id") || 0);
   const title = String(formData.get("title") || "").trim();
@@ -69,7 +72,7 @@ export async function saveCourseAction(
   const gradientRaw = String(formData.get("gradient") || "");
   const gradient = gradients.has(gradientRaw)
     ? gradientRaw
-    : "linear-gradient(135deg,#0b1530 0%,#1c2b57 45%,#2a6fbf 100%)";
+    : "linear-gradient(135deg,#090E16 0%,#47000E 45%,#ED002B 100%)";
   const instructorName = String(formData.get("instructor_name") || "").trim();
   const instructorTitle = String(formData.get("instructor_title") || "").trim();
   const instructorBio = String(formData.get("instructor_bio") || "").trim();
@@ -81,19 +84,71 @@ export async function saveCourseAction(
     .filter(Boolean);
   const curriculum = parseCurriculum(String(formData.get("curriculum") || ""));
 
-  if (title.length < 4) return { error: "কোর্সের নাম কমপক্ষে ৪ অক্ষরের হতে হবে।" };
-  if (!slug) return { error: "একটি বৈধ স্লাগ দিন (ইংরেজি অক্ষর/সংখ্যা)।" };
-  if (subtitle.length < 10) return { error: "সংক্ষিপ্ত বর্ণনা কমপক্ষে ১০ অক্ষরের হতে হবে।" };
-  if (description.length < 30) return { error: "কোর্সের বিবরণ কমপক্ষে ৩০ অক্ষরের হতে হবে।" };
-  if (!category) return { error: "ক্যাটাগরি লিখুন।" };
-  if (!instructorName) return { error: "ইনস্ট্রাক্টরের নাম লিখুন।" };
-  if (!outcomes.length) return { error: "কমপক্ষে একটি শেখার ফলাফল (outcome) যোগ করুন।" };
-  if (!curriculum) return { error: "কারিকুলামে কমপক্ষে একটি মডিউল ও একটি লেসন থাকতে হবে।" };
+  if (title.length < 4)
+    return {
+      error: pick(
+        locale,
+        "কোর্সের নাম কমপক্ষে ৪ অক্ষরের হতে হবে।",
+        "Course title must be at least 4 characters long."
+      ),
+    };
+  if (!slug)
+    return {
+      error: pick(
+        locale,
+        "একটি বৈধ স্লাগ দিন (ইংরেজি অক্ষর/সংখ্যা)।",
+        "Please provide a valid slug (English letters/numbers)."
+      ),
+    };
+  if (subtitle.length < 10)
+    return {
+      error: pick(
+        locale,
+        "সংক্ষিপ্ত বর্ণনা কমপক্ষে ১০ অক্ষরের হতে হবে।",
+        "Short description must be at least 10 characters long."
+      ),
+    };
+  if (description.length < 30)
+    return {
+      error: pick(
+        locale,
+        "কোর্সের বিবরণ কমপক্ষে ৩০ অক্ষরের হতে হবে।",
+        "Course description must be at least 30 characters long."
+      ),
+    };
+  if (!category) return { error: pick(locale, "ক্যাটাগরি লিখুন।", "Please enter a category.") };
+  if (!instructorName)
+    return {
+      error: pick(locale, "ইনস্ট্রাক্টরের নাম লিখুন।", "Please enter the instructor's name."),
+    };
+  if (!outcomes.length)
+    return {
+      error: pick(
+        locale,
+        "কমপক্ষে একটি শেখার ফলাফল (outcome) যোগ করুন।",
+        "Add at least one learning outcome."
+      ),
+    };
+  if (!curriculum)
+    return {
+      error: pick(
+        locale,
+        "কারিকুলামে কমপক্ষে একটি মডিউল ও একটি লেসন থাকতে হবে।",
+        "The curriculum must include at least one module and one lesson."
+      ),
+    };
 
   const duplicate = await db
     .prepare("SELECT id FROM courses WHERE slug = ? AND id != ?")
     .get<{ id: number }>(slug, id);
-  if (duplicate) return { error: "এই স্লাগে আরেকটি কোর্স আছে। ভিন্ন স্লাগ দিন।" };
+  if (duplicate)
+    return {
+      error: pick(
+        locale,
+        "এই স্লাগে আরেকটি কোর্স আছে। ভিন্ন স্লাগ দিন।",
+        "Another course already uses this slug. Please choose a different one."
+      ),
+    };
 
   const lessonCount = curriculum.reduce((sum, m) => sum + m.lessons.length, 0);
   const values = [

@@ -1,5 +1,7 @@
 import "server-only";
 import { db } from "./db";
+import { getLocale } from "./i18n-server";
+import type { Locale } from "./i18n";
 import type {
   Bundle,
   Course,
@@ -23,6 +25,59 @@ function parseCourse(row: Course): CourseParsed {
     // keep empty defaults if seed data is malformed
   }
   return { ...row, outcomes, curriculum };
+}
+
+async function loadTranslations(
+  entity: string,
+  slugs: string[]
+): Promise<Map<string, Record<string, unknown>>> {
+  const map = new Map<string, Record<string, unknown>>();
+  const unique = [...new Set(slugs.filter(Boolean))];
+  if (!unique.length) return map;
+  const placeholders = unique.map(() => "?").join(", ");
+  const rows = await db
+    .prepare(
+      `SELECT slug, data FROM translations WHERE entity = ? AND locale = 'en' AND slug IN (${placeholders})`
+    )
+    .all<{ slug: string; data: string }>(entity, ...unique);
+  for (const row of rows) {
+    try {
+      map.set(row.slug, JSON.parse(row.data) as Record<string, unknown>);
+    } catch {
+      // ignore malformed translation rows
+    }
+  }
+  return map;
+}
+
+async function localizeRows<T extends { slug: string }>(
+  entity: string,
+  rows: T[],
+  locale: Locale
+): Promise<T[]> {
+  if (locale !== "en" || !rows.length) return rows;
+  const translations = await loadTranslations(
+    entity,
+    rows.map((row) => row.slug)
+  );
+  return rows.map((row) => {
+    const t = translations.get(row.slug);
+    return t ? ({ ...row, ...t } as T) : row;
+  });
+}
+
+async function localizeRow<T extends { slug: string }>(
+  entity: string,
+  row: T | null,
+  locale: Locale
+): Promise<T | null> {
+  if (!row) return null;
+  const [localized] = await localizeRows(entity, [row], locale);
+  return localized;
+}
+
+async function localizeCourses(rows: CourseParsed[], locale: Locale): Promise<CourseParsed[]> {
+  return localizeRows<CourseParsed>("course", rows, locale);
 }
 
 export type CourseFilters = {
@@ -60,17 +115,27 @@ export async function listCourses(filters: CourseFilters = {}): Promise<CoursePa
   let sql = `SELECT * FROM courses WHERE ${where.join(" AND ")} ORDER BY ${order}`;
   if (filters.limit) sql += ` LIMIT ${Number(filters.limit)}`;
   const rows = await db.prepare(sql).all<Course>(...params);
-  return rows.map(parseCourse);
+  const locale = await getLocale();
+  return localizeCourses(rows.map(parseCourse), locale);
 }
 
 export async function getCourseBySlug(slug: string): Promise<CourseParsed | null> {
   const row = await db
     .prepare("SELECT * FROM courses WHERE slug = ?")
     .get<Course>(slug);
-  return row ? parseCourse(row) : null;
+  if (!row) return null;
+  const locale = await getLocale();
+  return localizeRow<CourseParsed>("course", parseCourse(row), locale);
 }
 
 export async function getCourseById(id: number): Promise<CourseParsed | null> {
+  const row = await db.prepare("SELECT * FROM courses WHERE id = ?").get<Course>(id);
+  if (!row) return null;
+  const locale = await getLocale();
+  return localizeRow<CourseParsed>("course", parseCourse(row), locale);
+}
+
+export async function getCourseByIdRaw(id: number): Promise<CourseParsed | null> {
   const row = await db.prepare("SELECT * FROM courses WHERE id = ?").get<Course>(id);
   return row ? parseCourse(row) : null;
 }
@@ -84,15 +149,21 @@ export async function listCategories(): Promise<{ category: string; count: numbe
 }
 
 export async function listBundles(): Promise<Bundle[]> {
-  return db.prepare("SELECT * FROM bundles ORDER BY id ASC").all<Bundle>();
+  const rows = await db.prepare("SELECT * FROM bundles ORDER BY id ASC").all<Bundle>();
+  const locale = await getLocale();
+  return localizeRows<Bundle>("bundle", rows, locale);
 }
 
 export async function getBundleBySlug(slug: string): Promise<Bundle | null> {
-  return (await db.prepare("SELECT * FROM bundles WHERE slug = ?").get<Bundle>(slug)) ?? null;
+  const row = (await db.prepare("SELECT * FROM bundles WHERE slug = ?").get<Bundle>(slug)) ?? null;
+  const locale = await getLocale();
+  return localizeRow<Bundle>("bundle", row, locale);
 }
 
 export async function getBundleById(id: number): Promise<Bundle | null> {
-  return (await db.prepare("SELECT * FROM bundles WHERE id = ?").get<Bundle>(id)) ?? null;
+  const row = (await db.prepare("SELECT * FROM bundles WHERE id = ?").get<Bundle>(id)) ?? null;
+  const locale = await getLocale();
+  return localizeRow<Bundle>("bundle", row, locale);
 }
 
 export async function getBundleCourses(bundle: Bundle): Promise<CourseParsed[]> {
@@ -107,35 +178,48 @@ export async function getBundleCourses(bundle: Bundle): Promise<CourseParsed[]> 
   const rows = await db
     .prepare(`SELECT * FROM courses WHERE id IN (${placeholders})`)
     .all<Course>(...ids);
-  return rows.map(parseCourse);
+  const locale = await getLocale();
+  return localizeCourses(rows.map(parseCourse), locale);
 }
 
 export async function listWorkshops(): Promise<Workshop[]> {
-  return db
+  const rows = await db
     .prepare("SELECT * FROM workshops ORDER BY starts_at ASC")
     .all<Workshop>();
+  const locale = await getLocale();
+  return localizeRows<Workshop>("workshop", rows, locale);
 }
 
 export async function getWorkshopById(id: number): Promise<Workshop | null> {
-  return (await db.prepare("SELECT * FROM workshops WHERE id = ?").get<Workshop>(id)) ?? null;
+  const row = (await db.prepare("SELECT * FROM workshops WHERE id = ?").get<Workshop>(id)) ?? null;
+  const locale = await getLocale();
+  return localizeRow<Workshop>("workshop", row, locale);
 }
 
 export async function listEbooks(): Promise<Ebook[]> {
-  return db.prepare("SELECT * FROM ebooks ORDER BY id ASC").all<Ebook>();
+  const rows = await db.prepare("SELECT * FROM ebooks ORDER BY id ASC").all<Ebook>();
+  const locale = await getLocale();
+  return localizeRows<Ebook>("ebook", rows, locale);
 }
 
 export async function getEbookById(id: number): Promise<Ebook | null> {
-  return (await db.prepare("SELECT * FROM ebooks WHERE id = ?").get<Ebook>(id)) ?? null;
+  const row = (await db.prepare("SELECT * FROM ebooks WHERE id = ?").get<Ebook>(id)) ?? null;
+  const locale = await getLocale();
+  return localizeRow<Ebook>("ebook", row, locale);
 }
 
 export async function listPosts(limit?: number): Promise<Post[]> {
   let sql = "SELECT * FROM posts ORDER BY published_at DESC";
   if (limit) sql += ` LIMIT ${Number(limit)}`;
-  return db.prepare(sql).all<Post>();
+  const rows = await db.prepare(sql).all<Post>();
+  const locale = await getLocale();
+  return localizeRows<Post>("post", rows, locale);
 }
 
 export async function getPostBySlug(slug: string): Promise<Post | null> {
-  return (await db.prepare("SELECT * FROM posts WHERE slug = ?").get<Post>(slug)) ?? null;
+  const row = (await db.prepare("SELECT * FROM posts WHERE slug = ?").get<Post>(slug)) ?? null;
+  const locale = await getLocale();
+  return localizeRow<Post>("post", row, locale);
 }
 
 export async function getEnrollment(userId: number, courseId: number) {
@@ -217,9 +301,11 @@ export async function listMyEnrollments(userId: number) {
        WHERE e.user_id = ? ORDER BY e.enrolled_at DESC`
     )
     .all<Course & { enrolled_at: string }>(userId);
+  const locale = await getLocale();
+  const courses = await localizeCourses(rows.map(parseCourse), locale);
   return Promise.all(
-    rows.map(async (row) => {
-      const course = parseCourse(row);
+    rows.map(async (row, i) => {
+      const course = courses[i];
       const completed = await getCompletedLessons(userId, course.id);
       return {
         course,

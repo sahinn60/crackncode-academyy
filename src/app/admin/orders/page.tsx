@@ -2,53 +2,72 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { adminOrders } from "@/lib/data";
 import { adminCancelOrderAction, adminMarkPaidAction } from "@/lib/admin-actions";
+import { getLocale } from "@/lib/i18n-server";
+import { pick, type Locale } from "@/lib/i18n";
 import {
-  bengaliNumber,
+  formatNumber,
   formatDateShort,
   formatTaka,
   orderStatusLabel,
   paymentMethodLabel,
 } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "অর্ডার" };
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return { title: pick(locale, "অর্ডার", "Orders") };
+}
 
-const filters = [
-  { value: "all", label: "সব" },
-  { value: "pending", label: "অপেক্ষমাণ" },
-  { value: "paid", label: "সম্পন্ন" },
-  { value: "cancelled", label: "বাতিল" },
-];
+const filterValues = ["all", "pending", "paid", "cancelled"];
+
+function filterLabel(value: string, locale: Locale): string {
+  if (value === "pending") return pick(locale, "অপেক্ষমাণ", "Pending");
+  if (value === "paid") return pick(locale, "সম্পন্ন", "Paid");
+  if (value === "cancelled") return pick(locale, "বাতিল", "Cancelled");
+  return pick(locale, "সব", "All");
+}
 
 export default async function AdminOrdersPage({
   searchParams,
 }: {
   searchParams: Promise<{ status?: string }>;
 }) {
+  const locale = await getLocale();
   const { status: raw } = await searchParams;
-  const status = filters.some((f) => f.value === raw) ? raw! : "all";
+  const status = raw && filterValues.includes(raw) ? raw : "all";
   const orders = await adminOrders(status);
   const paidTotal = orders
     .filter((o) => o.status === "paid")
     .reduce((sum, o) => sum + o.amount, 0);
 
+  const orderCount = formatNumber(orders.length, locale);
+  const paidTotalText = formatTaka(paidTotal, locale);
+
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted">লেনদেন</p>
-        <h1 className="section-title mt-1 text-3xl">অর্ডার ব্যবস্থাপনা</h1>
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+          {pick(locale, "লেনদেন", "Transactions")}
+        </p>
+        <h1 className="section-title mt-1 text-3xl">
+          {pick(locale, "অর্ডার ব্যবস্থাপনা", "Order management")}
+        </h1>
         <p className="mt-1 text-sm text-muted">
-          {bengaliNumber(orders.length)}টি অর্ডার · এই তালিকায় মোট {formatTaka(paidTotal)} সম্পন্ন
+          {pick(
+            locale,
+            `${orderCount}টি অর্ডার · এই তালিকায় মোট ${paidTotalText} সম্পন্ন`,
+            `${orderCount} orders · ${paidTotalText} paid in this list`
+          )}
         </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {filters.map((f) => (
+        {filterValues.map((value) => (
           <Link
-            key={f.value}
-            href={f.value === "all" ? "/admin/orders" : `/admin/orders?status=${f.value}`}
-            className={`pill px-3 py-1.5 ${status === f.value ? "pill-orange" : ""}`}
+            key={value}
+            href={value === "all" ? "/admin/orders" : `/admin/orders?status=${value}`}
+            className={`pill px-3 py-1.5 ${status === value ? "pill-orange" : ""}`}
           >
-            {f.label}
+            {filterLabel(value, locale)}
           </Link>
         ))}
       </div>
@@ -58,13 +77,13 @@ export default async function AdminOrdersPage({
           <table className="table-cn">
             <thead>
               <tr>
-                <th>অর্ডার</th>
-                <th>স্টুডেন্ট</th>
-                <th>পদ্ধতি</th>
-                <th>পরিমাণ</th>
-                <th>স্ট্যাটাস</th>
-                <th>তারিখ</th>
-                <th className="text-right">অ্যাকশন</th>
+                <th>{pick(locale, "অর্ডার", "Order")}</th>
+                <th>{pick(locale, "স্টুডেন্ট", "Student")}</th>
+                <th>{pick(locale, "পদ্ধতি", "Method")}</th>
+                <th>{pick(locale, "পরিমাণ", "Amount")}</th>
+                <th>{pick(locale, "স্ট্যাটাস", "Status")}</th>
+                <th>{pick(locale, "তারিখ", "Date")}</th>
+                <th className="text-right">{pick(locale, "অ্যাকশন", "Actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -79,8 +98,10 @@ export default async function AdminOrdersPage({
                     <p className="max-w-[10rem] truncate text-xs font-semibold">{o.student_name}</p>
                     <p className="max-w-[10rem] truncate text-[0.62rem] text-muted">{o.student_email}</p>
                   </td>
-                  <td className="whitespace-nowrap text-xs">{paymentMethodLabel(o.method)}</td>
-                  <td className="whitespace-nowrap text-sm font-semibold">{formatTaka(o.amount)}</td>
+                  <td className="whitespace-nowrap text-xs">{paymentMethodLabel(o.method, locale)}</td>
+                  <td className="whitespace-nowrap text-sm font-semibold">
+                    {formatTaka(o.amount, locale)}
+                  </td>
                   <td>
                     <span
                       className={`pill ${
@@ -91,14 +112,16 @@ export default async function AdminOrdersPage({
                             : "pill-live"
                       }`}
                     >
-                      {orderStatusLabel(o.status)}
+                      {orderStatusLabel(o.status, locale)}
                     </span>
                     {o.status === "paid" && o.paid_at && (
-                      <p className="mt-1 text-[0.6rem] text-muted">{formatDateShort(o.paid_at)}</p>
+                      <p className="mt-1 text-[0.6rem] text-muted">
+                        {formatDateShort(o.paid_at, locale)}
+                      </p>
                     )}
                   </td>
                   <td className="whitespace-nowrap text-[0.68rem] text-muted">
-                    {formatDateShort(o.created_at)}
+                    {formatDateShort(o.created_at, locale)}
                   </td>
                   <td>
                     {o.status === "pending" ? (
@@ -106,7 +129,7 @@ export default async function AdminOrdersPage({
                         <form action={adminMarkPaidAction}>
                           <input type="hidden" name="id" value={o.id} />
                           <button type="submit" className="btn btn-primary btn-sm">
-                            পরিশোধিত
+                            {pick(locale, "পরিশোধিত", "Mark paid")}
                           </button>
                         </form>
                         <form action={adminCancelOrderAction}>
@@ -115,7 +138,7 @@ export default async function AdminOrdersPage({
                             type="submit"
                             className="rounded-md px-2 py-1 text-[0.7rem] font-semibold text-live hover:bg-live/10"
                           >
-                            বাতিল
+                            {pick(locale, "বাতিল", "Cancel")}
                           </button>
                         </form>
                       </div>
@@ -130,15 +153,17 @@ export default async function AdminOrdersPage({
         </div>
         {orders.length === 0 && (
           <p className="px-4 py-10 text-center text-sm text-muted">
-            এই ফিল্টারে কোনো অর্ডার নেই।
+            {pick(locale, "এই ফিল্টারে কোনো অর্ডার নেই।", "No orders match this filter.")}
           </p>
         )}
       </div>
 
       <p className="text-[0.7rem] leading-relaxed text-muted">
-        নোট: ডেমো মোডে শিক্ষার্থী নিজেই পেমেন্ট নিশ্চিত করতে পারে। ম্যানুয়াল যাচাইয়ের পর
-        শিক্ষার্থীর পেমেন্ট না হলে অর্ডার বাতিল করুন। পরিশোধিত করলে কোর্স/বান্ডেল স্বয়ংক্রিয়ভাবে
-        এনরোল হবে।
+        {pick(
+          locale,
+          "নোট: ডেমো মোডে শিক্ষার্থী নিজেই পেমেন্ট নিশ্চিত করতে পারে। ম্যানুয়াল যাচাইয়ের পর শিক্ষার্থীর পেমেন্ট না হলে অর্ডার বাতিল করুন। পরিশোধিত করলে কোর্স/বান্ডেল স্বয়ংক্রিয়ভাবে এনরোল হবে।",
+          "Note: in demo mode students can confirm payment themselves. After manual verification, cancel the order if the student hasn't paid. Marking an order as paid enrolls the course/bundle automatically."
+        )}
       </p>
     </div>
   );

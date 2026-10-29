@@ -2,40 +2,53 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
+import { pick, type Locale } from "@/lib/i18n";
+import { formatNumber } from "@/lib/utils";
 
-const items = [
+const items: {
+  href: string;
+  label: (locale: Locale) => string;
+  icon: ReactNode;
+}[] = [
   {
     href: "/admin",
-    label: "ড্যাশবোর্ড",
+    label: (locale) => pick(locale, "ড্যাশবোর্ড", "Dashboard"),
     icon: (
       <path d="M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z" />
     ),
   },
   {
     href: "/admin/courses",
-    label: "কোর্স",
+    label: (locale) => pick(locale, "কোর্স", "Courses"),
     icon: <path d="M4 5h16v14H4zM8 9h8M8 13h5" />,
   },
   {
     href: "/admin/orders",
-    label: "অর্ডার",
+    label: (locale) => pick(locale, "অর্ডার", "Orders"),
     icon: <path d="M5 8h14l-1 12H6L5 8Zm3 0V6a4 4 0 0 1 8 0v2" />,
   },
   {
     href: "/admin/students",
-    label: "স্টুডেন্ট",
+    label: (locale) => pick(locale, "স্টুডেন্ট", "Students"),
     icon: (
       <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0" />
     ),
   },
   {
     href: "/admin/messages",
-    label: "মেসেজ",
+    label: (locale) => pick(locale, "মেসেজ", "Messages"),
     icon: <path d="M4 5h16v11H9l-5 4V5Z" />,
   },
 ];
 
-export function AdminNav({ messageCount = 0 }: { messageCount?: number }) {
+export function AdminNav({
+  messageCount = 0,
+  locale,
+}: {
+  messageCount?: number;
+  locale: Locale;
+}) {
   const pathname = usePathname();
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
@@ -43,7 +56,7 @@ export function AdminNav({ messageCount = 0 }: { messageCount?: number }) {
   return (
     <nav
       className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0"
-      aria-label="অ্যাডমিন মেনু"
+      aria-label={pick(locale, "অ্যাডমিন মেনু", "Admin menu")}
     >
       {items.map((item) => (
         <Link
@@ -64,10 +77,10 @@ export function AdminNav({ messageCount = 0 }: { messageCount?: number }) {
           >
             {item.icon}
           </svg>
-          <span>{item.label}</span>
+          <span>{item.label(locale)}</span>
           {item.href === "/admin/messages" && messageCount > 0 && (
             <span className="ml-auto rounded-full bg-orange px-1.5 py-0.5 text-[0.6rem] font-bold text-navy">
-              {new Intl.NumberFormat("bn-BD").format(messageCount)}
+              {formatNumber(messageCount, locale)}
             </span>
           )}
         </Link>

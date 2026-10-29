@@ -2,18 +2,28 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { verifyCertificate } from "@/lib/data";
-import { bengaliNumber, formatDate } from "@/lib/utils";
+import { getLocale } from "@/lib/i18n-server";
+import { pick } from "@/lib/i18n";
+import { formatNumber, formatDate } from "@/lib/utils";
 
-export const metadata: Metadata = {
-  title: "সার্টিফিকেট যাচাই",
-  description: "CrackNcode Academy সার্টিফিকেট কোড দিয়ে সাথে সাথে যাচাই করুন।",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return {
+    title: pick(locale, "সার্টিফিকেট যাচাই", "Verify Certificate"),
+    description: pick(
+      locale,
+      "CrackNcode Academy সার্টিফিকেট কোড দিয়ে সাথে সাথে যাচাই করুন।",
+      "Verify a CrackNcode Academy certificate instantly with its code."
+    ),
+  };
+}
 
 export default async function VerifyPage({
   searchParams,
 }: {
   searchParams: Promise<{ code?: string }>;
 }) {
+  const locale = await getLocale();
   const { code } = await searchParams;
   const result = code ? await verifyCertificate(code) : null;
   const user = await getCurrentUser();
@@ -22,16 +32,30 @@ export default async function VerifyPage({
     <>
       <section className="border-b border-line bg-surface-2/50">
         <div className="container-cn py-12 lg:py-16">
-          <nav className="flex items-center gap-2 text-xs text-muted" aria-label="ব্রেডক্রাম্ব">
-            <Link href="/" className="hover:text-ink">হোম</Link>
+          <nav
+            className="flex items-center gap-2 text-xs text-muted"
+            aria-label={pick(locale, "ব্রেডক্রাম্ব", "Breadcrumb")}
+          >
+            <Link href="/" className="hover:text-ink">{pick(locale, "হোম", "Home")}</Link>
             <span>/</span>
-            <span className="text-ink">সার্টিফিকেট যাচাই</span>
+            <span className="text-ink">{pick(locale, "সার্টিফিকেট যাচাই", "Verify Certificate")}</span>
           </nav>
-          <span className="eyebrow mt-6">ভেরিফিকেশন</span>
-          <h1 className="section-title mt-3 text-3xl md:text-5xl">সার্টিফিকেট যাচাই করুন</h1>
+          <span className="eyebrow mt-6">{pick(locale, "ভেরিফিকেশন", "Verification")}</span>
+          <h1 className="section-title mt-3 text-3xl md:text-5xl">
+            {pick(locale, "সার্টিফিকেট যাচাই করুন", "Verify a certificate")}
+          </h1>
           <p className="mt-3 max-w-2xl text-muted">
-            সার্টিফিকেটের উপরে থাকা কোডটি নিচে দিন। কোর্স ১০০% সম্পন্ন থাকলে সার্টিফিকেটের
-            তথ্য সাথে সাথে দেখাবে।
+            {pick(
+              locale,
+              "সার্টিফিকেটের উপরে থাকা কোডটি নিচে দিন। কোর্স ",
+              "Enter the code printed on the certificate below. If the course is "
+            )}
+            {formatNumber(100, locale)}%{" "}
+            {pick(
+              locale,
+              "সম্পন্ন থাকলে সার্টিফিকেটের তথ্য সাথে সাথে দেখাবে।",
+              "complete, the certificate details will appear right away."
+            )}
           </p>
         </div>
       </section>
@@ -41,18 +65,26 @@ export default async function VerifyPage({
           <input
             name="code"
             defaultValue={code || ""}
-            placeholder="যেমন: CN-W001-S00001"
+            placeholder={pick(locale, "যেমন: CN-W001-S00001", "e.g. CN-W001-S00001")}
             className="input font-mono"
-            aria-label="সার্টিফিকেট কোড"
+            aria-label={pick(locale, "সার্টিফিকেট কোড", "Certificate code")}
           />
-          <button type="submit" className="btn btn-primary shrink-0">যাচাই করুন</button>
+          <button type="submit" className="btn btn-primary shrink-0">
+            {pick(locale, "যাচাই করুন", "Verify")}
+          </button>
         </form>
 
         {code && !result && (
           <div className="mt-6 rounded-2xl border border-live/30 bg-live/5 p-6">
-            <p className="font-display text-lg font-bold text-live">সার্টিফিকেট পাওয়া যায়নি</p>
+            <p className="font-display text-lg font-bold text-live">
+              {pick(locale, "সার্টিফিকেট পাওয়া যায়নি", "Certificate not found")}
+            </p>
             <p className="mt-1 text-sm text-muted">
-              কোডটি ঠিক আছে কিনা দেখুন। কোড শুধু কোর্সের সব লেসন সম্পন্ন করলে সক্রিয় হয়।
+              {pick(
+                locale,
+                "কোডটি ঠিক আছে কিনা দেখুন। কোড শুধু কোর্সের সব লেসন সম্পন্ন করলে সক্রিয় হয়।",
+                "Check that the code is correct. A code becomes active only after you complete every lesson in the course."
+              )}
             </p>
           </div>
         )}
@@ -62,16 +94,22 @@ export default async function VerifyPage({
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft bg-green/10 px-6 py-4">
               <span className="inline-flex items-center gap-2 text-sm font-bold text-green">
                 <span className="grid h-6 w-6 place-items-center rounded-full bg-green text-cream text-xs">✓</span>
-                ভেরিফায়েড সার্টিফিকেট
+                {pick(locale, "ভেরিফায়েড সার্টিফিকেট", "Verified certificate")}
               </span>
               <span className="font-mono text-[0.7rem] text-muted">{result.code}</span>
             </div>
             <div className="p-6 md:p-8">
               <p className="text-xs uppercase tracking-[0.2em] text-muted">CrackNcode Academy</p>
-              <h2 className="section-title mt-2 text-2xl md:text-3xl">কোর্স সম্পন্নের সার্টিফিকেট</h2>
-              <p className="mt-5 text-sm text-muted">এই সার্টিফিকেট প্রদান করা হয়েছে</p>
+              <h2 className="section-title mt-2 text-2xl md:text-3xl">
+                {pick(locale, "কোর্স সম্পন্নের সার্টিফিকেট", "Certificate of Course Completion")}
+              </h2>
+              <p className="mt-5 text-sm text-muted">
+                {pick(locale, "এই সার্টিফিকেট প্রদান করা হয়েছে", "This certificate is presented to")}
+              </p>
               <p className="font-display text-2xl font-bold">{result.student.name}</p>
-              <p className="mt-4 text-sm text-muted">সফলভাবে সম্পন্ন করার জন্য</p>
+              <p className="mt-4 text-sm text-muted">
+                {pick(locale, "সফলভাবে সম্পন্ন করার জন্য", "for successfully completing")}
+              </p>
               <Link
                 href={`/courses/${result.course.slug}`}
                 className="font-display text-xl font-bold text-orange-deep hover:underline"
@@ -79,28 +117,46 @@ export default async function VerifyPage({
                 {result.course.title}
               </Link>
               <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 border-t border-line-soft pt-4 text-xs text-muted">
-                <span>সম্পন্ন: {formatDate(result.completedAt)}</span>
-                <span>লেসন: {bengaliNumber(result.course.lesson_count)}টি</span>
-                <span>যাচাই: {formatDate(new Date().toISOString())}</span>
+                <span>
+                  {pick(locale, "সম্পন্ন: ", "Completed: ")}
+                  {formatDate(result.completedAt, locale)}
+                </span>
+                <span>
+                  {pick(locale, "লেসন: ", "Lessons: ")}
+                  {formatNumber(result.course.lesson_count, locale)}
+                  {pick(locale, "টি", "")}
+                </span>
+                <span>
+                  {pick(locale, "যাচাই: ", "Verified: ")}
+                  {formatDate(new Date().toISOString(), locale)}
+                </span>
               </div>
             </div>
           </div>
         )}
 
         <div className="mt-8 rounded-2xl border border-line-soft bg-surface-2/60 p-6 text-sm text-muted">
-          <p className="font-semibold text-ink">আপনার সার্টিফিকেট কোড কোথায় পাবেন?</p>
+          <p className="font-semibold text-ink">
+            {pick(locale, "আপনার সার্টিফিকেট কোড কোথায় পাবেন?", "Where do I find my certificate code?")}
+          </p>
           <p className="mt-1">
-            কোর্সের সব লেসন সম্পন্ন করলে{" "}
             {user ? (
-              <Link href="/dashboard" className="font-semibold text-orange-deep underline">
-                আপনার ড্যাশবোর্ডে
-              </Link>
+              <>
+                {pick(locale, "কোর্সের সব লেসন সম্পন্ন করলে ", "Once you complete every lesson in a course, ")}
+                <Link href="/dashboard" className="font-semibold text-orange-deep underline">
+                  {pick(locale, "আপনার ড্যাশবোর্ডে", "your dashboard")}
+                </Link>
+                {pick(locale, " সার্টিফিকেট কোড দেখতে পাবেন।", " shows your certificate code.")}
+              </>
             ) : (
-              <Link href="/login" className="font-semibold text-orange-deep underline">
-                ড্যাশবোর্ডে লগইন করে
-              </Link>
-            )}{" "}
-            সার্টিফিকেট কোড দেখতে পাবেন।
+              <>
+                {pick(locale, "কোর্সের সব লেসন সম্পন্ন করার পর ", "After completing every lesson in a course, ")}
+                <Link href="/login" className="font-semibold text-orange-deep underline">
+                  {pick(locale, "ড্যাশবোর্ডে লগইন করে", "log in to your dashboard")}
+                </Link>
+                {pick(locale, " সার্টিফিকেট কোড দেখতে পাবেন।", " to see your certificate code.")}
+              </>
+            )}
           </p>
         </div>
       </section>

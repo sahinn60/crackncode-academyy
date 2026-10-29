@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { pick } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n-server";
 
-export function LegalPage({
+export async function LegalPage({
   title,
   updated,
   intro,
@@ -11,17 +13,25 @@ export function LegalPage({
   intro: string;
   sections: { heading: string; body: string[] }[];
 }) {
+  const locale = await getLocale();
   return (
     <>
       <section className="border-b border-line bg-surface-2/50">
         <div className="container-cn max-w-4xl py-12 lg:py-16">
-          <nav className="flex items-center gap-2 text-xs text-muted" aria-label="ব্রেডক্রাম্ব">
-            <Link href="/" className="hover:text-ink">হোম</Link>
+          <nav
+            className="flex items-center gap-2 text-xs text-muted"
+            aria-label={pick(locale, "ব্রেডক্রাম্ব", "Breadcrumb")}
+          >
+            <Link href="/" className="hover:text-ink">
+              {pick(locale, "হোম", "Home")}
+            </Link>
             <span>/</span>
             <span className="text-ink">{title}</span>
           </nav>
           <h1 className="section-title mt-6 text-3xl md:text-5xl">{title}</h1>
-          <p className="mt-2 text-xs text-muted">সর্বশেষ আপডেট: {updated}</p>
+          <p className="mt-2 text-xs text-muted">
+            {pick(locale, "সর্বশেষ আপডেট:", "Last updated:")} {updated}
+          </p>
           <p className="mt-4 max-w-2xl text-muted">{intro}</p>
         </div>
       </section>
@@ -46,11 +56,11 @@ export function LegalPage({
         </div>
 
         <div className="mt-8 rounded-2xl border border-line-soft bg-surface-2/60 p-5 text-sm text-muted">
-          এই নীতিমালা নিয়ে প্রশ্ন থাকলে{" "}
+          {pick(locale, "এই নীতিমালা নিয়ে প্রশ্ন থাকলে", "Questions about this policy?")}{" "}
           <Link href="/contact" className="font-semibold text-orange-deep underline">
-            যোগাযোগ করুন
+            {pick(locale, "যোগাযোগ করুন", "Contact us")}
           </Link>
-          ।
+          {pick(locale, "।", ".")}
         </div>
       </section>
     </>

@@ -2,8 +2,9 @@
 
 import { useActionState } from "react";
 import { subscribeAction, type FormState } from "@/lib/actions";
+import { pick, type Locale } from "@/lib/i18n";
 
-export function SubscribeForm() {
+export function SubscribeForm({ locale }: { locale: Locale }) {
   const [state, action, pending] = useActionState<FormState, FormData>(
     subscribeAction,
     null
@@ -24,16 +25,16 @@ export function SubscribeForm() {
           type="email"
           name="email"
           required
-          placeholder="আপনার ইমেইল"
+          placeholder={pick(locale, "আপনার ইমেইল", "Your email")}
           className="w-full bg-transparent px-3 py-1.5 text-sm text-cream placeholder:text-cream/50 focus:outline-none"
-          aria-label="ইমেইল ঠিকানা"
+          aria-label={pick(locale, "ইমেইল ঠিকানা", "Email address")}
         />
         <button
           type="submit"
           disabled={pending}
-          className="shrink-0 rounded-full bg-orange px-4 py-1.5 text-xs font-bold text-navy transition-opacity hover:opacity-90 disabled:opacity-60"
+          className="shrink-0 rounded-full bg-orange px-4 py-1.5 text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
         >
-          {pending ? "..." : "সাবস্ক্রাইব"}
+          {pending ? "..." : pick(locale, "সাবস্ক্রাইব", "Subscribe")}
         </button>
       </div>
       {state?.error && <p className="text-[0.7rem] text-live">{state.error}</p>}

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Logo } from "./logo";
 import { SubscribeForm } from "./subscribe-form";
+import { getLocale } from "@/lib/i18n-server";
+import { pick } from "@/lib/i18n";
 
-const columns = [
+const columnsBn = [
   {
     title: "লার্নিং",
     links: [
@@ -32,7 +34,40 @@ const columns = [
   },
 ];
 
-export function SiteFooter() {
+const columnsEn = [
+  {
+    title: "Learning",
+    links: [
+      { href: "/courses", label: "All courses" },
+      { href: "/bundles", label: "Bundles" },
+      { href: "/workshops", label: "Live workshops" },
+      { href: "/ebooks", label: "E-books" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { href: "/about", label: "About us" },
+      { href: "/blog", label: "Blog" },
+      { href: "/contact", label: "Contact" },
+      { href: "/verify", label: "Verify certificate" },
+    ],
+  },
+  {
+    title: "Support",
+    links: [
+      { href: "/privacy", label: "Privacy policy" },
+      { href: "/terms", label: "Terms of use" },
+      { href: "/refund", label: "Refund policy" },
+      { href: "/contact", label: "Help center" },
+    ],
+  },
+];
+
+export async function SiteFooter() {
+  const locale = await getLocale();
+  const columns = pick(locale, columnsBn, columnsEn);
+
   return (
     <footer className="mt-auto border-t border-line bg-navy text-cream">
       <div className="container-cn grid gap-10 py-14 lg:grid-cols-[1.4fr_2fr]">
@@ -41,15 +76,18 @@ export function SiteFooter() {
             <Logo />
           </div>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-cream/70">
-            সহজ বাংলায় কোডিং ও টেক স্কিল শেখার প্ল্যাটফর্ম। প্রজেক্ট-বেসড কোর্স, লাইভ
-            ওয়ার্কশপ আর ক্যারিয়ার সাপোর্ট — সব এক জায়গায়।
+            {pick(
+              locale,
+              "সহজ বাংলায় কোডিং ও টেক স্কিল শেখার প্ল্যাটফর্ম। প্রজেক্ট-বেসড কোর্স, লাইভ ওয়ার্কশপ আর ক্যারিয়ার সাপোর্ট — সব এক জায়গায়।",
+              "A platform for learning coding and tech skills in plain Bangla. Project-based courses, live workshops and career support — all in one place."
+            )}
           </p>
 
           <div className="mt-6">
             <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-cream/50">
-              নিউজলেটার
+              {pick(locale, "নিউজলেটার", "Newsletter")}
             </p>
-            <SubscribeForm />
+            <SubscribeForm locale={locale} />
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-2">
@@ -90,11 +128,17 @@ export function SiteFooter() {
 
       <div className="border-t border-cream/15">
         <div className="container-cn flex flex-col items-center justify-between gap-3 py-5 text-[0.72rem] text-cream/50 sm:flex-row">
-          <p>© ২০২৬ CrackNcode Academy। সর্বস্বত্ব সংরক্ষিত।</p>
+          <p>
+            {pick(
+              locale,
+              "© ২০২৬ CrackNcode Academy। সর্বস্বত্ব সংরক্ষিত।",
+              "© 2026 CrackNcode Academy. All rights reserved."
+            )}
+          </p>
           <p className="flex items-center gap-1.5">
-            তৈরি হয়েছে বাংলাদেশে
+            {pick(locale, "তৈরি হয়েছে বাংলাদেশে", "Built in Bangladesh")}
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange" aria-hidden />
-            বাংলায় শেখার জন্য
+            {pick(locale, "বাংলায় শেখার জন্য", "for learning in Bangla")}
           </p>
         </div>
       </div>

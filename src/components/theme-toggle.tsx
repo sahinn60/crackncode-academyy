@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { pick, type Locale } from "@/lib/i18n";
 
-export function ThemeToggle() {
+export function ThemeToggle({ locale }: { locale: Locale }) {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
@@ -22,7 +23,11 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      aria-label={dark ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}
+      aria-label={
+        dark
+          ? pick(locale, "লাইট মোড চালু করুন", "Switch to light mode")
+          : pick(locale, "ডার্ক মোড চালু করুন", "Switch to dark mode")
+      }
       className="grid h-9 w-9 place-items-center rounded-full border border-line-soft bg-surface text-ink transition-colors hover:bg-surface-2"
     >
       {dark ? (

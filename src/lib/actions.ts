@@ -8,6 +8,8 @@ import { verifyPassword, hashPassword } from "./password";
 import { getEnrollment, getOrderById } from "./data";
 import { fulfillOrder, cancelOrder } from "./orders";
 import { getCheckoutProduct, productHref } from "./products";
+import { getLocale } from "./i18n-server";
+import { pick } from "./i18n";
 
 export type FormState = { error?: string; success?: string } | null;
 
@@ -18,13 +20,29 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const next = safeNext(String(formData.get("next") || ""));
+  const locale = await getLocale();
 
-  if (name.length < 2) return { error: "আপনার পুরো নাম লিখুন।" };
-  if (!emailRe.test(email)) return { error: "সঠিক ইমেইল ঠিকানা দিন।" };
-  if (password.length < 8) return { error: "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।" };
+  if (name.length < 2) return { error: pick(locale, "আপনার পুরো নাম লিখুন।", "Please enter your full name.") };
+  if (!emailRe.test(email))
+    return { error: pick(locale, "সঠিক ইমেইল ঠিকানা দিন।", "Please enter a valid email address.") };
+  if (password.length < 8)
+    return {
+      error: pick(
+        locale,
+        "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।",
+        "Password must be at least 8 characters long."
+      ),
+    };
 
   const existing = await db.prepare("SELECT id FROM users WHERE email = ?").get(email);
-  if (existing) return { error: "এই ইমেইলে একটি অ্যাকাউন্ট আছে। লগইন করুন।" };
+  if (existing)
+    return {
+      error: pick(
+        locale,
+        "এই ইমেইলে একটি অ্যাকাউন্ট আছে। লগইন করুন।",
+        "An account already exists with this email. Please log in."
+      ),
+    };
 
   const result = await db
     .prepare(
@@ -46,7 +64,10 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
     .get<{ id: number; password_hash: string; role: string }>(email);
 
   if (!user || !verifyPassword(password, user.password_hash)) {
-    return { error: "ইমেইল বা পাসওয়ার্ড সঠিক নয়।" };
+    const locale = await getLocale();
+    return {
+      error: pick(locale, "ইমেইল বা পাসওয়ার্ড সঠিক নয়।", "Incorrect email or password."),
+    };
   }
 
   await setSession(user.id);
@@ -147,10 +168,19 @@ export async function contactAction(_prev: FormState, formData: FormData): Promi
   const email = String(formData.get("email") || "").trim();
   const subject = String(formData.get("subject") || "").trim();
   const body = String(formData.get("body") || "").trim();
+  const locale = await getLocale();
 
-  if (name.length < 2) return { error: "আপনার নাম লিখুন।" };
-  if (!emailRe.test(email)) return { error: "সঠিক ইমেইল ঠিকানা দিন।" };
-  if (body.length < 10) return { error: "বার্তাটি অন্তত ১০ অক্ষরের হতে হবে।" };
+  if (name.length < 2) return { error: pick(locale, "আপনার নাম লিখুন।", "Please enter your name.") };
+  if (!emailRe.test(email))
+    return { error: pick(locale, "সঠিক ইমেইল ঠিকানা দিন।", "Please enter a valid email address.") };
+  if (body.length < 10)
+    return {
+      error: pick(
+        locale,
+        "বার্তাটি অন্তত ১০ অক্ষরের হতে হবে।",
+        "Your message must be at least 10 characters long."
+      ),
+    };
 
   await db
     .prepare(
@@ -158,49 +188,86 @@ export async function contactAction(_prev: FormState, formData: FormData): Promi
     )
     .run(name, email, subject, body, new Date().toISOString());
 
-  return { success: "ধন্যবাদ! আপনার বার্তা পৌঁছেছে। আমরা ২৪ ঘণ্টার মধ্যে যোগাযোগ করব।" };
+  return {
+    success: pick(
+      locale,
+      "ধন্যবাদ! আপনার বার্তা পৌঁছেছে। আমরা ২৪ ঘণ্টার মধ্যে যোগাযোগ করব।",
+      "Thank you! Your message has been received. We will get back to you within 24 hours."
+    ),
+  };
 }
 
 export async function subscribeAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const email = String(formData.get("email") || "").trim().toLowerCase();
-  if (!emailRe.test(email)) return { error: "সঠিক ইমেইল ঠিকানা দিন।" };
+  const locale = await getLocale();
+  if (!emailRe.test(email))
+    return { error: pick(locale, "সঠিক ইমেইল ঠিকানা দিন।", "Please enter a valid email address.") };
   await db
     .prepare("INSERT OR IGNORE INTO subscribers (email, created_at) VALUES (?, ?)")
     .run(email, new Date().toISOString());
-  return { success: "সাবস্ক্রাইব সম্পন্ন! নতুন কোর্সের খবর পাবেন।" };
+  return {
+    success: pick(
+      locale,
+      "সাবস্ক্রাইব সম্পন্ন! নতুন কোর্সের খবর পাবেন।",
+      "Subscribed! You will hear about new courses first."
+    ),
+  };
 }
 
 export async function updateProfileAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await getCurrentUser();
-  if (!user) return { error: "আবার লগইন করুন।" };
+  const locale = await getLocale();
+  if (!user) return { error: pick(locale, "আবার লগইন করুন।", "Please log in again.") };
   const name = String(formData.get("name") || "").trim();
   const phone = String(formData.get("phone") || "").trim();
-  if (name.length < 2) return { error: "আপনার নাম লিখুন।" };
+  if (name.length < 2) return { error: pick(locale, "আপনার নাম লিখুন।", "Please enter your name.") };
   await db
     .prepare("UPDATE users SET name = ?, phone = ? WHERE id = ?")
     .run(name, phone || null, user.id);
   revalidatePath("/dashboard");
-  return { success: "প্রোফাইল আপডেট হয়েছে।" };
+  return { success: pick(locale, "প্রোফাইল আপডেট হয়েছে।", "Profile updated.") };
 }
 
 export async function changePasswordAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await getCurrentUser();
-  if (!user) return { error: "আবার লগইন করুন।" };
+  const locale = await getLocale();
+  if (!user) return { error: pick(locale, "আবার লগইন করুন।", "Please log in again.") };
   const current = String(formData.get("current") || "");
   const password = String(formData.get("password") || "");
   const confirm = String(formData.get("confirm") || "");
-  if (!current) return { error: "বর্তমান পাসওয়ার্ড দিন।" };
-  if (password.length < 8) return { error: "নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।" };
-  if (password !== confirm) return { error: "নতুন পাসওয়ার্ড দুটি মিলছে না।" };
-  if (password === current) return { error: "নতুন পাসওয়ার্ড আগেরটির মতোই — ভিন্ন পাসওয়ার্ড দিন।" };
+  if (!current) return { error: pick(locale, "বর্তমান পাসওয়ার্ড দিন।", "Enter your current password.") };
+  if (password.length < 8)
+    return {
+      error: pick(
+        locale,
+        "নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।",
+        "New password must be at least 8 characters long."
+      ),
+    };
+  if (password !== confirm)
+    return { error: pick(locale, "নতুন পাসওয়ার্ড দুটি মিলছে না।", "The new passwords do not match.") };
+  if (password === current)
+    return {
+      error: pick(
+        locale,
+        "নতুন পাসওয়ার্ড আগেরটির মতোই — ভিন্ন পাসওয়ার্ড দিন।",
+        "New password is the same as the old one — choose a different password."
+      ),
+    };
   const row = await db
     .prepare("SELECT password_hash FROM users WHERE id = ?")
     .get<{ password_hash: string }>(user.id);
   if (!row || !verifyPassword(current, row.password_hash)) {
-    return { error: "বর্তমান পাসওয়ার্ড সঠিক নয়।" };
+    return { error: pick(locale, "বর্তমান পাসওয়ার্ড সঠিক নয়।", "Current password is incorrect.") };
   }
   await db
     .prepare("UPDATE users SET password_hash = ? WHERE id = ?")
     .run(hashPassword(password), user.id);
-  return { success: "পাসওয়ার্ড পরিবর্তন হয়েছে। পরবর্তী লগইনে নতুন পাসওয়ার্ড ব্যবহার করুন।" };
+  return {
+    success: pick(
+      locale,
+      "পাসওয়ার্ড পরিবর্তন হয়েছে। পরবর্তী লগইনে নতুন পাসওয়ার্ড ব্যবহার করুন।",
+      "Password changed. Use your new password the next time you log in."
+    ),
+  };
 }

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { formatTaka, discountPercent } from "@/lib/utils";
+import { categoryLabel, levelLabel, pick } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n-server";
 
 type Props = {
   gradient: string;
@@ -30,7 +32,7 @@ export function Cover({ gradient, icon, className = "", label }: Props) {
   );
 }
 
-export function Price({
+export async function Price({
   price,
   original,
   size = "md",
@@ -39,17 +41,22 @@ export function Price({
   original: number;
   size?: "sm" | "md" | "lg";
 }) {
+  const locale = await getLocale();
   const off = discountPercent(price, original);
   const priceClass =
     size === "lg" ? "text-3xl" : size === "sm" ? "text-base" : "text-xl";
   return (
     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-      <span className={`font-display font-bold ${priceClass}`}>{formatTaka(price)}</span>
+      <span className={`font-display font-bold ${priceClass}`}>
+        {formatTaka(price, locale)}
+      </span>
       {original > price && (
         <>
-          <span className="text-sm text-muted line-through">{formatTaka(original)}</span>
+          <span className="text-sm text-muted line-through">
+            {formatTaka(original, locale)}
+          </span>
           <span className="rounded-md bg-green/10 px-1.5 py-0.5 text-[0.68rem] font-bold text-green">
-            {off}% ছাড়
+            {pick(locale, `${off}% ছাড়`, `${off}% off`)}
           </span>
         </>
       )}
@@ -57,7 +64,7 @@ export function Price({
   );
 }
 
-export function CourseCard({
+export async function CourseCard({
   slug,
   title,
   subtitle,
@@ -84,11 +91,14 @@ export function CourseCard({
   icon: string;
   image?: string;
 }) {
+  const locale = await getLocale();
   const off = discountPercent(price, originalPrice);
+  const categoryText = categoryLabel(category, locale);
+  const levelText = levelLabel(level, locale);
   return (
     <Link
       href={`/courses/${slug}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-line-soft bg-surface transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_40px_-24px_rgba(11,21,48,0.45)]"
+      className="group flex flex-col overflow-hidden rounded-lg border border-line-soft bg-surface transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_40px_-24px_rgba(9,14,22,0.45)]"
     >
       <div className="relative aspect-[16/10] overflow-hidden bg-surface-2">
         {image ? (
@@ -102,30 +112,34 @@ export function CourseCard({
           <Cover gradient={gradient} icon={icon} className="h-full w-full" />
         )}
         <span className="absolute left-2.5 top-2.5 rounded-sm bg-navy/90 px-2 py-0.5 text-[0.62rem] font-bold text-cream backdrop-blur">
-          {category}
+          {categoryText}
         </span>
         {off > 0 && (
-          <span className="absolute right-2.5 top-2.5 rounded-sm bg-orange px-2 py-0.5 text-[0.62rem] font-extrabold text-navy shadow-sm">
-            {off}% ছাড়
+          <span className="absolute right-2.5 top-2.5 rounded-sm bg-orange px-2 py-0.5 text-[0.62rem] font-extrabold text-white shadow-sm">
+            {pick(locale, `${off}% ছাড়`, `${off}% off`)}
           </span>
         )}
       </div>
       <div className="flex flex-1 flex-col p-4">
         <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-orange-deep">
-          {level}
+          {levelText}
         </span>
         <h3 className="font-display mt-1 text-[1.06rem] font-bold leading-snug group-hover:text-orange-deep">
           {title}
         </h3>
         <p className="mt-1 line-clamp-2 text-[0.82rem] leading-relaxed text-muted">{subtitle}</p>
         <div className="mt-3 flex items-center gap-3 text-[0.7rem] text-muted">
-          <span>{hours} ঘণ্টা</span>
+          <span>
+            {hours} {pick(locale, "ঘণ্টা", "hrs")}
+          </span>
           <span className="h-1 w-1 rounded-full bg-line" />
-          <span>{lessonCount} লেসন</span>
+          <span>
+            {lessonCount} {pick(locale, "লেসন", "lessons")}
+          </span>
         </div>
         <div className="mt-auto flex items-end justify-between gap-2 border-t border-line-soft pt-3">
           <Price price={price} original={originalPrice} size="sm" />
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line text-sm transition-colors group-hover:border-orange group-hover:bg-orange group-hover:text-navy">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line text-sm transition-colors group-hover:border-orange group-hover:bg-orange group-hover:text-white">
             →
           </span>
         </div>

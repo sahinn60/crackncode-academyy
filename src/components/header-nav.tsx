@@ -4,11 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "./theme-toggle";
+import { LocaleSwitcher } from "./locale-switcher";
 import { logoutAction } from "@/lib/actions";
+import { pick, type Locale } from "@/lib/i18n";
 
 type HeaderUser = { name: string; email: string; role: "student" | "admin" } | null;
 
-const navItems = [
+const navItemsBn = [
   { href: "/courses", label: "কোর্স" },
   { href: "/bundles", label: "বান্ডেল" },
   { href: "/workshops", label: "ওয়ার্কশপ" },
@@ -17,7 +19,16 @@ const navItems = [
   { href: "/about", label: "আমাদের সম্পর্কে" },
 ];
 
-export function HeaderNav({ user }: { user: HeaderUser }) {
+const navItemsEn = [
+  { href: "/courses", label: "Courses" },
+  { href: "/bundles", label: "Bundles" },
+  { href: "/workshops", label: "Workshops" },
+  { href: "/ebooks", label: "E-books" },
+  { href: "/blog", label: "Blog" },
+  { href: "/about", label: "About" },
+];
+
+export function HeaderNav({ user, locale }: { user: HeaderUser; locale: Locale }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -28,10 +39,14 @@ export function HeaderNav({ user }: { user: HeaderUser }) {
   }, [pathname]);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const navItems = pick(locale, navItemsBn, navItemsEn);
 
   return (
     <>
-      <nav className="hidden items-center gap-6 lg:flex" aria-label="প্রধান মেনু">
+      <nav
+        className="hidden items-center gap-6 lg:flex"
+        aria-label={pick(locale, "প্রধান মেনু", "Main menu")}
+      >
         {navItems.map((item) => (
           <Link
             key={item.href}
@@ -46,7 +61,7 @@ export function HeaderNav({ user }: { user: HeaderUser }) {
       <div className="ml-auto flex items-center gap-2">
         <Link
           href="/courses"
-          aria-label="কোর্স খুঁজুন"
+          aria-label={pick(locale, "কোর্স খুঁজুন", "Search courses")}
           className="hidden h-9 w-9 place-items-center rounded-full border border-line-soft bg-surface text-ink transition-colors hover:bg-surface-2 sm:grid"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -54,7 +69,8 @@ export function HeaderNav({ user }: { user: HeaderUser }) {
             <path d="m16.5 16.5 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </Link>
-        <ThemeToggle />
+        <LocaleSwitcher locale={locale} />
+        <ThemeToggle locale={locale} />
 
         {user ? (
           <div className="relative hidden lg:block">
@@ -78,14 +94,14 @@ export function HeaderNav({ user }: { user: HeaderUser }) {
                   href="/dashboard"
                   className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2"
                 >
-                  আমার ড্যাশবোর্ড
+                  {pick(locale, "আমার ড্যাশবোর্ড", "My dashboard")}
                 </Link>
                 {user.role === "admin" && (
                   <Link
                     href="/admin"
                     className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2"
                   >
-                    অ্যাডমিন প্যানেল
+                    {pick(locale, "অ্যাডমিন প্যানেল", "Admin panel")}
                   </Link>
                 )}
                 <form action={logoutAction}>
@@ -93,7 +109,7 @@ export function HeaderNav({ user }: { user: HeaderUser }) {
                     type="submit"
                     className="w-full rounded-lg px-3 py-2 text-left text-sm text-live hover:bg-surface-2"
                   >
-                    লগআউট
+                    {pick(locale, "লগআউট", "Log out")}
                   </button>
                 </form>
               </div>
@@ -102,10 +118,10 @@ export function HeaderNav({ user }: { user: HeaderUser }) {
         ) : (
           <div className="hidden items-center gap-2 lg:flex">
             <Link href="/login" className="btn btn-ghost btn-sm">
-              লগইন
+              {pick(locale, "লগইন", "Log in")}
             </Link>
             <Link href="/register" className="btn btn-primary btn-sm">
-              ফ্রি অ্যাকাউন্ট
+              {pick(locale, "ফ্রি অ্যাকাউন্ট", "Free account")}
             </Link>
           </div>
         )}
@@ -114,7 +130,7 @@ export function HeaderNav({ user }: { user: HeaderUser }) {
           type="button"
           onClick={() => setOpen((v) => !v)}
           className="grid h-9 w-9 place-items-center rounded-full border border-line-soft bg-surface lg:hidden"
-          aria-label="মেনু খুলুন"
+          aria-label={pick(locale, "মেনু খুলুন", "Open menu")}
           aria-expanded={open}
         >
           {open ? (
@@ -131,7 +147,10 @@ export function HeaderNav({ user }: { user: HeaderUser }) {
 
       {open && (
         <div className="absolute left-0 right-0 top-full z-40 border-b border-line bg-page p-5 shadow-xl lg:hidden">
-          <nav className="flex flex-col gap-1" aria-label="মোবাইল মেনু">
+          <nav
+            className="flex flex-col gap-1"
+            aria-label={pick(locale, "মোবাইল মেনু", "Mobile menu")}
+          >
             {navItems.map((item) => (
               <Link
                 key={item.href}
@@ -148,26 +167,26 @@ export function HeaderNav({ user }: { user: HeaderUser }) {
             {user ? (
               <>
                 <Link href="/dashboard" className="btn btn-outline w-full">
-                  আমার ড্যাশবোর্ড
+                  {pick(locale, "আমার ড্যাশবোর্ড", "My dashboard")}
                 </Link>
                 {user.role === "admin" && (
                   <Link href="/admin" className="btn btn-outline w-full">
-                    অ্যাডমিন প্যানেল
+                    {pick(locale, "অ্যাডমিন প্যানেল", "Admin panel")}
                   </Link>
                 )}
                 <form action={logoutAction}>
                   <button type="submit" className="btn btn-ghost w-full text-live">
-                    লগআউট
+                    {pick(locale, "লগআউট", "Log out")}
                   </button>
                 </form>
               </>
             ) : (
               <>
                 <Link href="/login" className="btn btn-outline w-full">
-                  লগইন
+                  {pick(locale, "লগইন", "Log in")}
                 </Link>
                 <Link href="/register" className="btn btn-primary w-full">
-                  ফ্রি অ্যাকাউন্ট খুলুন
+                  {pick(locale, "ফ্রি অ্যাকাউন্ট খুলুন", "Create free account")}
                 </Link>
               </>
             )}

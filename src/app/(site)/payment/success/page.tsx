@@ -3,15 +3,21 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getOrderById } from "@/lib/data";
+import { pick } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n-server";
 import { formatDate, formatTaka, paymentMethodLabel } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "পেমেন্ট সফল" };
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return { title: pick(locale, "পেমেন্ট সফল", "Payment successful") };
+}
 
 export default async function PaymentSuccessPage({
   searchParams,
 }: {
   searchParams: Promise<{ order?: string }>;
 }) {
+  const locale = await getLocale();
   const { order: orderParam } = await searchParams;
   const orderId = Number(orderParam);
   const user = await requireUser("/dashboard");
@@ -29,53 +35,68 @@ export default async function PaymentSuccessPage({
               ✓
             </span>
             <h1 className="section-title mt-4 text-2xl">
-              {order.status === "paid" ? "পেমেন্ট সফল হয়েছে" : "অর্ডার বাতিল হয়েছে"}
+              {order.status === "paid"
+                ? pick(locale, "পেমেন্ট সফল হয়েছে", "Payment successful")
+                : pick(locale, "অর্ডার বাতিল হয়েছে", "Order cancelled")}
             </h1>
             <p className="mt-1 text-sm text-muted">
               {order.status === "paid"
-                ? "আপনার অ্যাক্সেস চালু হয়েছে — এখনই শেখা শুরু করতে পারেন।"
-                : "এই অর্ডারটি সম্পন্ন হয়নি। আবার চেষ্টা করতে পারেন।"}
+                ? pick(
+                    locale,
+                    "আপনার অ্যাক্সেস চালু হয়েছে — এখনই শেখা শুরু করতে পারেন।",
+                    "Your access is active — you can start learning right now."
+                  )
+                : pick(
+                    locale,
+                    "এই অর্ডারটি সম্পন্ন হয়নি। আবার চেষ্টা করতে পারেন।",
+                    "This order was not completed. You can try again."
+                  )}
             </p>
           </div>
           <div className="p-6">
             <div className="space-y-2 text-sm">
               <div className="flex justify-between gap-4">
-                <span className="text-muted">পণ্য</span>
+                <span className="text-muted">{pick(locale, "পণ্য", "Product")}</span>
                 <span className="text-right font-semibold">{order.title}</span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-muted">পরিমাণ</span>
-                <span className="font-semibold">{formatTaka(order.amount)}</span>
+                <span className="text-muted">{pick(locale, "পরিমাণ", "Amount")}</span>
+                <span className="font-semibold">{formatTaka(order.amount, locale)}</span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-muted">মাধ্যম</span>
-                <span className="font-semibold">{paymentMethodLabel(order.method)} (ডেমো)</span>
+                <span className="text-muted">{pick(locale, "মাধ্যম", "Method")}</span>
+                <span className="font-semibold">
+                  {paymentMethodLabel(order.method, locale)} ({pick(locale, "ডেমো", "demo")})
+                </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-muted">ট্রানজেকশন</span>
+                <span className="text-muted">{pick(locale, "ট্রানজেকশন", "Transaction")}</span>
                 <span className="font-mono text-xs">{order.txn_id}</span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-muted">তারিখ</span>
+                <span className="text-muted">{pick(locale, "তারিখ", "Date")}</span>
                 <span className="font-semibold">
-                  {formatDate(order.paid_at || order.created_at)}
+                  {formatDate(order.paid_at || order.created_at, locale)}
                 </span>
               </div>
             </div>
 
             <div className="mt-6 grid gap-2">
               <Link href="/dashboard" className="btn btn-primary w-full">
-                ড্যাশবোর্ডে যান
+                {pick(locale, "ড্যাশবোর্ডে যান", "Go to dashboard")}
               </Link>
               <Link href="/courses" className="btn btn-outline w-full">
-                আরও কোর্স দেখুন
+                {pick(locale, "আরও কোর্স দেখুন", "Browse more courses")}
               </Link>
             </div>
           </div>
         </div>
         <p className="mt-4 text-center text-[0.68rem] text-muted">
-          সমস্যা হলে ট্রানজেকশন আইডি দিয়ে{" "}
-          <Link href="/contact" className="underline">যোগাযোগ করুন</Link>।
+          {pick(locale, "সমস্যা হলে ট্রানজেকশন আইডি দিয়ে", "If there's a problem,")}{" "}
+          <Link href="/contact" className="underline">
+            {pick(locale, "যোগাযোগ করুন", "contact us")}
+          </Link>
+          {pick(locale, "।", " with the transaction ID.")}
         </p>
       </div>
     </div>

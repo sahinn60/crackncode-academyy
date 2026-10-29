@@ -13,14 +13,22 @@ import {
   progressPercent,
 } from "@/lib/data";
 import type { CourseParsed } from "@/lib/types";
-import { bengaliNumber } from "@/lib/utils";
+import { categoryLabel } from "@/lib/i18n";
+import { pick, type Locale } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n-server";
+import { formatNumber } from "@/lib/utils";
 
 type Params = Promise<{ slug: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const locale = await getLocale();
   const { slug } = await params;
   const course = await getCourseBySlug(slug);
-  return { title: course ? `${course.title} — লার্নিং` : "লার্নিং" };
+  return {
+    title: course
+      ? `${course.title} — ${pick(locale, "লার্নিং", "Learning")}`
+      : pick(locale, "লার্নিং", "Learning"),
+  };
 }
 
 export default async function LearnPage({
@@ -30,6 +38,7 @@ export default async function LearnPage({
   params: Params;
   searchParams: Promise<{ lesson?: string }>;
 }) {
+  const locale = await getLocale();
   const { slug } = await params;
   const { lesson: lessonQuery } = await searchParams;
   const course = await getCourseBySlug(slug);
@@ -62,53 +71,68 @@ export default async function LearnPage({
         <div className="overflow-hidden rounded-2xl border border-line-soft bg-surface">
           <div className="border-b border-line-soft p-4">
             <p className="text-[0.62rem] font-semibold uppercase tracking-widest text-orange-deep">
-              {course.category}
+              {categoryLabel(course.category, locale)}
             </p>
             <h1 className="font-display mt-1 text-lg font-bold leading-snug">{course.title}</h1>
             <div className="mt-3 flex items-center gap-3">
               <div className="progress-track h-1.5 flex-1">
                 <div className="progress-fill" style={{ width: `${percent}%` }} />
               </div>
-              <span className="text-[0.65rem] text-muted">{percent}%</span>
+              <span className="text-[0.65rem] text-muted">{formatNumber(percent, locale)}%</span>
             </div>
             <p className="mt-1.5 text-[0.65rem] text-muted">
-              {bengaliNumber(completed.length)} / {bengaliNumber(allLessons.length)} লেসন সম্পন্ন
+              {formatNumber(completed.length, locale)} / {formatNumber(allLessons.length, locale)}{" "}
+              {pick(locale, "লেসন সম্পন্ন", "lessons completed")}
             </p>
             {isAdminPreview && (
               <p className="mt-2 rounded-lg bg-mustard/20 px-2 py-1 text-[0.65rem] font-semibold">
-                অ্যাডমিন প্রিভিউ — প্রোগ্রেস সেভ হবে না
+                {pick(locale, "অ্যাডমিন প্রিভিউ — প্রোগ্রেস সেভ হবে না", "Admin preview — progress will not be saved")}
               </p>
             )}
           </div>
 
           <details className="group lg:hidden" open>
             <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-xs font-semibold">
-              কোর্স কারিকুলাম <span className="faq-plus text-lg leading-none">+</span>
+              {pick(locale, "কোর্স কারিকুলাম", "Course curriculum")}{" "}
+              <span className="faq-plus text-lg leading-none">+</span>
             </summary>
             <LessonList
               course={course}
               currentKey={current.key}
               completedSet={completedSet}
+              locale={locale}
             />
           </details>
           <div className="hidden lg:block">
-            <LessonList course={course} currentKey={current.key} completedSet={completedSet} />
+            <LessonList
+              course={course}
+              currentKey={current.key}
+              completedSet={completedSet}
+              locale={locale}
+            />
           </div>
         </div>
 
         <div className="mt-4 rounded-2xl border border-line-soft bg-surface p-4">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-muted">সাহায্য দরকার?</p>
-          <p className="mt-1 text-xs text-muted">
-            লেসন বুঝতে সমস্যা হলে আমাদের মেসেজ করুন।
+          <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-muted">
+            {pick(locale, "সাহায্য দরকার?", "Need help?")}
           </p>
-          <Link href="/contact" className="btn btn-outline btn-sm mt-3 w-full">যোগাযোগ</Link>
+          <p className="mt-1 text-xs text-muted">
+            {pick(locale, "লেসন বুঝতে সমস্যা হলে আমাদের মেসেজ করুন।", "If a lesson is unclear, send us a message.")}
+          </p>
+          <Link href="/contact" className="btn btn-outline btn-sm mt-3 w-full">
+            {pick(locale, "যোগাযোগ", "Contact")}
+          </Link>
         </div>
       </aside>
 
       <section className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <nav className="flex flex-wrap items-center gap-1.5 text-[0.7rem] text-muted" aria-label="ব্রেডক্রাম্ব">
-            <Link href="/dashboard" className="hover:text-ink">ড্যাশবোর্ড</Link>
+          <nav
+            className="flex flex-wrap items-center gap-1.5 text-[0.7rem] text-muted"
+            aria-label={pick(locale, "ব্রেডক্রাম্ব", "Breadcrumb")}
+          >
+            <Link href="/dashboard" className="hover:text-ink">{pick(locale, "ড্যাশবোর্ড", "Dashboard")}</Link>
             <span>/</span>
             <Link href={`/courses/${course.slug}`} className="max-w-[14rem] truncate hover:text-ink">
               {course.title}
@@ -117,18 +141,19 @@ export default async function LearnPage({
             <span className="text-ink">{current.moduleTitle}</span>
           </nav>
           <span className="pill">
-            লেসন {bengaliNumber(currentIndex + 1)} / {bengaliNumber(allLessons.length)}
+            {pick(locale, "লেসন", "Lesson")} {formatNumber(currentIndex + 1, locale)} /{" "}
+            {formatNumber(allLessons.length, locale)}
           </span>
         </div>
 
         <div className="relative mt-4 aspect-video overflow-hidden rounded-2xl border-2 border-line bg-navy">
-          <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(244,240,232,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(244,240,232,0.12)_1px,transparent_1px)] [background-size:40px_40px]" />
+          <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,245,245,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,245,245,0.12)_1px,transparent_1px)] [background-size:40px_40px]" />
           <div className="absolute left-4 top-4 flex items-center gap-2 font-mono text-[0.65rem] text-cream/60">
             <span className="h-2 w-2 rounded-full bg-live" />
             {slug}.lesson-{currentIndex + 1}
           </div>
           <div className="absolute right-4 top-4 rounded-full border border-cream/25 bg-cream/10 px-2.5 py-1 text-[0.6rem] font-semibold text-cream/70">
-            ভিডিও লেসন
+            {pick(locale, "ভিডিও লেসন", "Video lesson")}
           </div>
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-cream">
             <span className="grid h-16 w-16 place-items-center rounded-full border-2 border-cream/30 bg-cream/10 backdrop-blur">
@@ -138,7 +163,11 @@ export default async function LearnPage({
             </span>
             <p className="font-display text-lg font-bold">{current.lesson.title}</p>
             <p className="max-w-md text-[0.7rem] text-cream/60">
-              ভিডিও প্লেয়ার এখানে থাকবে — লেসনের লিখিত সারাংশ নিচে পড়ুন।
+              {pick(
+                locale,
+                "ভিডিও প্লেয়ার এখানে থাকবে — লেসনের লিখিত সারাংশ নিচে পড়ুন।",
+                "The video player will appear here — read the written summary of the lesson below."
+              )}
             </p>
           </div>
         </div>
@@ -146,28 +175,37 @@ export default async function LearnPage({
         <div className="mt-6 rounded-2xl border border-line-soft bg-surface p-5 md:p-7">
           <div className="flex flex-wrap items-center gap-2 text-[0.68rem] text-muted">
             <span className="pill pill-orange">{current.moduleTitle}</span>
-            <span>{current.lesson.minutes} মিনিট</span>
-            {isDone && <span className="pill pill-green">✓ সম্পন্ন</span>}
+            <span>
+              {formatNumber(current.lesson.minutes, locale)} {pick(locale, "মিনিট", "min")}
+            </span>
+            {isDone && <span className="pill pill-green">{pick(locale, "✓ সম্পন্ন", "✓ Completed")}</span>}
           </div>
           <h2 className="section-title mt-3 text-2xl md:text-3xl">{current.lesson.title}</h2>
 
           <div className="prose-cn mt-4">
             <p>
-              এই লেসনে আপনি <strong>{current.lesson.title}</strong> নিয়ে কাজ করবেন। মূল
-              ধারণাটি বুঝে নিন, তারপর নিজে ছোট একটি উদাহরণ লিখে অনুশীলন করুন। অনুশীলন ছাড়া
-              কোডিং শেখা হয় না — তাই নিচের ধাপগুলো শেষ করুন।
+              {pick(locale, "এই লেসনে আপনি", "In this lesson you will work on")}{" "}
+              <strong>{current.lesson.title}</strong>
+              {pick(
+                locale,
+                " নিয়ে কাজ করবেন। মূল ধারণাটি বুঝে নিন, তারপর নিজে ছোট একটি উদাহরণ লিখে অনুশীলন করুন। অনুশীলন ছাড়া কোডিং শেখা হয় না — তাই নিচের ধাপগুলো শেষ করুন।",
+                ". Understand the core idea, then practice by writing a small example yourself. Coding can't be learned without practice — so finish the steps below."
+              )}
             </p>
-            <h2>এই লেসনে যা করবেন</h2>
+            <h2>{pick(locale, "এই লেসনে যা করবেন", "What you'll do in this lesson")}</h2>
             <ul>
-              <li>ধারণাটি মন দিয়ে বুঝে নিন এবং নিজের ভাষায় নোট করুন।</li>
-              <li>উদাহরণ কোডটি নিজে লিখুন — কপি না করে টাইপ করুন।</li>
-              <li>একটি ছোট পরিবর্তন নিজে যোগ করে দেখান।</li>
-              <li>কোথাও আটকে গেলে কমিউনিটি বা যোগাযোগ পেজে প্রশ্ন করুন।</li>
+              <li>{pick(locale, "ধারণাটি মন দিয়ে বুঝে নিন এবং নিজের ভাষায় নোট করুন।", "Understand the concept carefully and take notes in your own words.")}</li>
+              <li>{pick(locale, "উদাহরণ কোডটি নিজে লিখুন — কপি না করে টাইপ করুন।", "Write the example code yourself — type it instead of copying.")}</li>
+              <li>{pick(locale, "একটি ছোট পরিবর্তন নিজে যোগ করে দেখান।", "Add a small change of your own and see what happens.")}</li>
+              <li>{pick(locale, "কোথাও আটকে গেলে কমিউনিটি বা যোগাযোগ পেজে প্রশ্ন করুন।", "If you get stuck, ask in the community or on the contact page.")}</li>
             </ul>
-            <h2>অনুশীলন</h2>
+            <h2>{pick(locale, "অনুশীলন", "Practice")}</h2>
             <p>
-              আজকের টপিক থেকে অন্তত দুটি ছোট সমস্যা নিজে সমাধান করুন। ফলাফল ঠিক না হলেও
-              চেষ্টা করুন — এরপর সমাধান মিলিয়ে দেখুন। এই অভ্যাসটাই আপনাকে এগিয়ে নেবে।
+              {pick(
+                locale,
+                "আজকের টপিক থেকে অন্তত দুটি ছোট সমস্যা নিজে সমাধান করুন। ফলাফল ঠিক না হলেও চেষ্টা করুন — এরপর সমাধান মিলিয়ে দেখুন। এই অভ্যাসটাই আপনাকে এগিয়ে নেবে।",
+                "Solve at least two small problems from today's topic on your own. Give it a try even if the result isn't right — then compare with the solution. This habit is what will move you forward."
+              )}
             </p>
           </div>
 
@@ -175,17 +213,21 @@ export default async function LearnPage({
             <div className="flex gap-2">
               {prev ? (
                 <Link href={`/learn/${slug}?lesson=${prev.key}`} className="btn btn-outline btn-sm">
-                  ← আগের লেসন
+                  {pick(locale, "← আগের লেসন", "← Previous lesson")}
                 </Link>
               ) : (
-                <span className="btn btn-outline btn-sm pointer-events-none opacity-40">← আগের লেসন</span>
+                <span className="btn btn-outline btn-sm pointer-events-none opacity-40">
+                  {pick(locale, "← আগের লেসন", "← Previous lesson")}
+                </span>
               )}
               {next ? (
                 <Link href={`/learn/${slug}?lesson=${next.key}`} className="btn btn-outline btn-sm">
-                  পরের লেসন →
+                  {pick(locale, "পরের লেসন →", "Next lesson →")}
                 </Link>
               ) : (
-                <span className="btn btn-outline btn-sm pointer-events-none opacity-40">পরের লেসন →</span>
+                <span className="btn btn-outline btn-sm pointer-events-none opacity-40">
+                  {pick(locale, "পরের লেসন →", "Next lesson →")}
+                </span>
               )}
             </div>
 
@@ -198,7 +240,11 @@ export default async function LearnPage({
                   type="submit"
                   className={`btn btn-sm ${isDone ? "btn-outline" : "btn-primary"}`}
                 >
-                  {isDone ? (next ? "সম্পন্ন ✓ — পরের লেসন" : "সম্পন্ন ✓") : "লেসন সম্পন্ন করুন"}
+                  {isDone
+                    ? next
+                      ? pick(locale, "সম্পন্ন ✓ — পরের লেসন", "Completed ✓ — next lesson")
+                      : pick(locale, "সম্পন্ন ✓", "Completed ✓")
+                    : pick(locale, "লেসন সম্পন্ন করুন", "Mark lesson complete")}
                 </button>
               </form>
             )}
@@ -209,9 +255,11 @@ export default async function LearnPage({
           <div className="mt-6 overflow-hidden rounded-2xl border-2 border-green/40 bg-green/5">
             <div className="flex flex-wrap items-center justify-between gap-4 p-5">
               <div>
-                <p className="font-display text-lg font-bold text-green">অভিনন্দন! কোর্স সম্পন্ন হয়েছে</p>
+                <p className="font-display text-lg font-bold text-green">
+                  {pick(locale, "অভিনন্দন! কোর্স সম্পন্ন হয়েছে", "Congratulations! Course completed")}
+                </p>
                 <p className="mt-1 text-sm text-muted">
-                  সার্টিফিকেট কোড:{" "}
+                  {pick(locale, "সার্টিফিকেট কোড:", "Certificate code:")}{" "}
                   <span className="font-mono font-semibold text-ink">
                     {certificateCode(course.id, user.id)}
                   </span>
@@ -222,9 +270,11 @@ export default async function LearnPage({
                   href={`/verify?code=${certificateCode(course.id, user.id)}`}
                   className="btn btn-primary btn-sm"
                 >
-                  সার্টিফিকেট দেখুন
+                  {pick(locale, "সার্টিফিকেট দেখুন", "View certificate")}
                 </Link>
-                <Link href="/dashboard" className="btn btn-outline btn-sm">ড্যাশবোর্ড</Link>
+                <Link href="/dashboard" className="btn btn-outline btn-sm">
+                  {pick(locale, "ড্যাশবোর্ড", "Dashboard")}
+                </Link>
               </div>
             </div>
           </div>
@@ -238,17 +288,19 @@ function LessonList({
   course,
   currentKey,
   completedSet,
+  locale,
 }: {
   course: CourseParsed;
   currentKey: string;
   completedSet: Set<string>;
+  locale: Locale;
 }) {
   return (
     <div className="divide-y divide-line-soft">
       {course.curriculum.map((module, mi) => (
         <div key={module.title} className="p-3">
           <p className="px-2 py-1 text-[0.62rem] font-bold uppercase tracking-wider text-muted">
-            মডিউল {bengaliNumber(mi + 1)} — {module.title}
+            {pick(locale, "মডিউল", "Module")} {formatNumber(mi + 1, locale)} — {module.title}
           </p>
           <ul className="mt-1 space-y-0.5">
             {module.lessons.map((lesson, li) => {

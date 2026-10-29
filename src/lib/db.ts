@@ -9,6 +9,13 @@ import {
   ebooksSeed,
   postsSeed,
 } from "./seed-data";
+import {
+  coursesEn,
+  bundlesEn,
+  workshopsEn,
+  ebooksEn,
+  postsEn,
+} from "./seed-en";
 
 const localPath =
   process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "crackncode.db");
@@ -99,6 +106,13 @@ CREATE TABLE IF NOT EXISTS subscribers (
 CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS translations (
+  entity TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  locale TEXT NOT NULL,
+  data TEXT NOT NULL,
+  PRIMARY KEY (entity, slug, locale)
 );
 CREATE TABLE IF NOT EXISTS bundles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -326,6 +340,23 @@ async function applyImages() {
   }
 }
 
+async function seedTranslations() {
+  const entries: [string, string, unknown][] = [];
+  for (const [slug, data] of Object.entries(coursesEn)) entries.push(["course", slug, data]);
+  for (const [slug, data] of Object.entries(bundlesEn)) entries.push(["bundle", slug, data]);
+  for (const [slug, data] of Object.entries(workshopsEn)) entries.push(["workshop", slug, data]);
+  for (const [slug, data] of Object.entries(ebooksEn)) entries.push(["ebook", slug, data]);
+  for (const [slug, data] of Object.entries(postsEn)) entries.push(["post", slug, data]);
+
+  for (const [entity, slug, data] of entries) {
+    await runRaw(
+      `INSERT INTO translations (entity, slug, locale, data) VALUES (?, ?, 'en', ?)
+       ON CONFLICT(entity, slug, locale) DO UPDATE SET data = excluded.data`,
+      [entity, slug, JSON.stringify(data)]
+    );
+  }
+}
+
 async function init() {
   if (!remoteUrl) {
     fs.mkdirSync(path.dirname(localPath), { recursive: true });
@@ -345,6 +376,7 @@ async function init() {
   await client.executeMultiple(SCHEMA);
   await seed();
   await applyImages();
+  await seedTranslations();
 }
 
 let initPromise: Promise<void> | null = null;
